@@ -1,0 +1,405 @@
+﻿@page "/controls"
+@using Radzen
+@using Radzen.Blazor
+@using RoommateApp.Web.Client
+@using RoommateApp.Web.Client.Services
+@implements IDisposable
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inject ChoresClient ChoresClient
+@inject UsersClient UsersClient
+@inject ApartmentStateService ApartmentState
+@inject NavigationManager Navigation
+
+<div class="p-3 p-md-4 bg-light min-vh-100">
+    <!-- Top Header / Navbar -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 p-3 bg-white">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                    <RadzenIcon Icon="check_box" Style="font-size: 1.5rem;" />
+                </div>
+                <div>
+                    <h1 class="h5 fw-bold m-0 text-dark">ChoreBoard</h1>
+                    <span class="text-muted small">@ApartmentState.ApartmentName</span>
+                </div>
+            </div>
+
+            <div class="bg-light p-1 rounded-pill d-none d-md-flex gap-1">
+                <button class="btn btn-light btn-sm rounded-pill px-3 text-secondary border-0" @onclick='() => Navigation.NavigateTo("/")'>Roommate Board</button>
+                <button class="btn btn-light btn-sm rounded-pill px-3 text-secondary border-0">Stats & Analytics</button>
+                <button class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">Controls</button>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-sm btn-outline-secondary rounded-pill extra-small" @onclick="ToggleAdminMode">
+                    Váltás: @(isAdmin ? "Member Nézetre" : "Admin Nézetre")
+                </button>
+
+                @if (isAdmin)
+                {
+                    <span class="badge border border-danger-subtle text-danger bg-danger-subtle px-2 py-1 rounded-pill extra-small fw-bold">ADMIN MODE</span>
+                }
+
+                <div class="d-flex align-items-center gap-2 px-3 py-1 rounded-pill" style="background-color: #e0e7ff; color: #4338ca;">
+                    <RadzenIcon Icon="emoji_events" Style="font-size: 1.2rem; color: #4338ca;" />
+                    <span class="fw-bold small">1,240 pts</span>
+                </div>
+                <RadzenAvatar Image="https://i.pravatar.cc/150?img=32" Size="AvatarSize.Medium" class="rounded-circle" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Title Section -->
+    <div class="mb-4">
+        <h2 class="h3 fw-bold m-0 text-dark">My Dashboard</h2>
+        <p class="text-muted small m-0">View roommates, create chores, and track your contributions.</p>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex align-items-center justify-content-center p-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Adatok betöltése...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- STABIL KÉT-OSZLOPO S GRIDEKKEL NEM CSÚSZIK EL A MÁSODIK OSZLOP -->
+        <div class="row g-4">
+            
+            <!-- BAL OSZLOP (Roommates & Roles + My Chore History) -->
+            <div class="col-lg-6 d-flex flex-column gap-4">
+                
+                <!-- 1. Roommates & Roles -->
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold text-dark m-0">Roommates & Roles</h5>
+                        @if (isAdmin)
+                        {
+                            <button class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold extra-small">+ Invite</button>
+                        }
+                        else
+                        {
+                            <span class="badge bg-light text-secondary border px-2 py-1 rounded-1 extra-small fw-bold">VIEW ONLY</span>
+                        }
+                    </div>
+
+                    <div class="d-flex flex-column gap-2">
+                        @foreach (var roommate in roommates)
+                        {
+                            <div class="d-flex justify-content-between align-items-center p-2 rounded-3 border-bottom">
+                                <div class="d-flex align-items-center gap-3">
+                                    <RadzenAvatar Image="@roommate.AvatarUrl" Size="AvatarSize.Medium" class="rounded-circle" />
+                                    <div>
+                                        <div class="fw-bold text-dark small">@roommate.Name @(roommate.IsCurrent ? "(You)" : "")</div>
+                                        <div class="text-muted extra-small">@roommate.Role</div>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-3">
+                                    <span class="fw-bold text-dark small">@roommate.Points.ToString("N0") pts</span>
+                                    @if (isAdmin && !roommate.IsCurrent)
+                                    {
+                                        <button class="btn btn-outline-danger btn-sm rounded-2 extra-small px-2 py-1">Remove</button>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- 2. My Chore History -->
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                    <h5 class="fw-bold text-dark mb-3">My Chore History</h5>
+
+                    <div class="d-flex flex-column gap-3">
+                        @if (!myHistory.Any())
+                        {
+                            <p class="text-muted small m-0">Még nem végeztél el egyetlen feladatot sem.</p>
+                        }
+                        else
+                        {
+                            @foreach (var history in myHistory)
+                            {
+                                <div class="card border shadow-sm rounded-3 p-3 bg-white">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="fw-bold px-2 py-1 rounded" style="font-size: 0.65rem; background-color: #dcfce7; color: #15803d; letter-spacing: 0.5px;">@history.Category</span>
+                                            <span class="text-muted extra-small">Completed @history.DateText</span>
+                                        </div>
+                                        <span class="fw-bold px-2 py-1 rounded-pill" style="font-size: 0.75rem; background-color: #fef9c3; color: #a16207;">+@history.Points pts</span>
+                                    </div>
+                                    <p class="fw-bold text-dark m-0 small">@history.Title</p>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- JOBB OSZLOP (Apartment Settings + Create New Chore) -->
+            <div class="col-lg-6 d-flex flex-column gap-4">
+
+                <!-- 1. Apartment Settings (Csak Adminoknak) -->
+                @if (isAdmin)
+                {
+                    <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                        <h5 class="fw-bold text-dark mb-3">Apartment Settings</h5>
+
+                        <div class="d-flex flex-column gap-3">
+                            <div>
+                                <label class="form-label extra-small fw-bold text-secondary mb-1">Apartment Name</label>
+                                <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle" @bind="aptName" />
+                            </div>
+
+                            <div>
+                                <label class="form-label extra-small fw-bold text-secondary mb-1">Weekly Reward Threshold (pts)</label>
+                                <input type="number" class="form-control rounded-3 py-2 px-3 border-light-subtle" @bind="rewardThreshold" />
+                            </div>
+
+                            <div>
+                                <label class="form-label extra-small fw-bold text-secondary mb-1">Weekly Streak Reset Schedule</label>
+                                <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle" @bind="resetSchedule" />
+                            </div>
+
+                            <button class="btn btn-primary rounded-3 py-2 fw-bold w-100 mt-2" style="background-color: #6366f1; border: none;" @onclick="SaveSettings" disabled="@isSaving">
+                                @(isSaving ? "Saving..." : "Save Config Settings")
+                            </button>
+                        </div>
+                    </div>
+                }
+
+                <!-- 2. Create New Chore (Mindenkinek) -->
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                    <h5 class="fw-bold text-dark m-0">Create New Chore</h5>
+                    <p class="text-muted extra-small mb-3">Propose a new chore to the board. Once created, any roommate can claim it.</p>
+
+                    @if (!string.IsNullOrEmpty(choreSuccessMessage))
+                    {
+                        <div class="alert alert-success py-2 extra-small mb-3">@choreSuccessMessage</div>
+                    }
+
+                    <div class="d-flex flex-column gap-3">
+                        <div>
+                            <label class="form-label extra-small fw-bold text-secondary mb-1">Chore Name</label>
+                            <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle" placeholder="e.g., Clean the microwave" @bind="newChoreName" />
+                        </div>
+
+                        <div>
+                            <label class="form-label extra-small fw-bold text-secondary mb-1">Category</label>
+                            <select class="form-select rounded-3 py-2 px-3 border-light-subtle" @onchange="OnCategoryChanged">
+                                @foreach (var cat in categories)
+                                {
+                                    <option value="@cat">@cat</option>
+                                }
+                                <option value="__NEW__">+ Add New Category...</option>
+                            </select>
+
+                            @if (isCustomCategory)
+                            {
+                                <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle mt-2" placeholder="Enter custom category name..." @bind="customCategoryName" />
+                            }
+                        </div>
+
+                        <!-- ÚJ: HATÁRIDŐ MEZŐ -->
+                        <div>
+                            <label class="form-label extra-small fw-bold text-secondary mb-1">Due Date</label>
+                            <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle" placeholder="e.g., Today, Tomorrow, Oct 30" @bind="newChoreDueDate" />
+                        </div>
+
+                        <div>
+                            <label class="form-label extra-small fw-bold text-secondary mb-1">Point Value</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control rounded-3 py-2 px-3 border-light-subtle" @bind="newChorePoints" />
+                                <span class="input-group-text bg-white border-light-subtle text-muted extra-small">pts</span>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary rounded-3 py-2 fw-bold w-100 mt-2" style="background-color: #6366f1; border: none;" @onclick="CreateChore" disabled="@isSubmittingChore">
+                            @(isSubmittingChore ? "Adding..." : "Add to Board")
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool isAdmin = true;
+
+    private string aptName = string.Empty;
+    private int rewardThreshold = 5000;
+    private string resetSchedule = string.Empty;
+
+    // Chore adatok
+    private List<string> categories = new();
+    private string selectedCategory = "CLEANING";
+    private string customCategoryName = string.Empty;
+    private bool isCustomCategory = false;
+
+    private string newChoreName = string.Empty;
+    private string newChoreDueDate = "Today"; 
+    private int newChorePoints = 15;
+
+    private bool isSubmittingChore = false;
+    private string choreSuccessMessage = string.Empty;
+
+    public class RoommateModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+        public int Points { get; set; }
+        public bool IsCurrent { get; set; }
+        public string AvatarUrl { get; set; } = string.Empty;
+    }
+
+    public class HistoryModel
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+        public string DateText { get; set; } = string.Empty;
+        public int Points { get; set; }
+    }
+
+    private List<RoommateModel> roommates = new();
+    private List<HistoryModel> myHistory = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        ApartmentState.OnChange += StateHasChanged;
+
+        try
+        {
+            await ApartmentState.LoadAsync();
+            aptName = ApartmentState.ApartmentName;
+            rewardThreshold = ApartmentState.RewardThreshold;
+            resetSchedule = ApartmentState.ResetSchedule;
+
+            var catList = await ChoresClient.GetCategoriesAsync();
+            categories = catList.ToList();
+            if (categories.Any()) selectedCategory = categories.First();
+
+            var users = await UsersClient.GetUsersAsync();
+            var chores = await ChoresClient.GetChoresAsync();
+
+            roommates = users.Select(u => new RoommateModel
+            {
+                Id = u.Id,
+                Name = u.Name,
+                Role = u.IsAdmin ? "Admin" : "Member",
+                IsCurrent = u.IsAdmin,
+                Points = chores.Where(c => c.UserId == u.Id && c.Status == "Done").Sum(c => c.Points),
+                AvatarUrl = $"https://i.pravatar.cc/150?img={u.Id + 10}"
+            }).ToList();
+
+            var currentAdminUser = users.FirstOrDefault(u => u.IsAdmin);
+            if (currentAdminUser != null)
+            {
+                myHistory = chores
+                    .Where(c => c.Status == "Done" && c.UserId == currentAdminUser.Id)
+                    .Select(c => new HistoryModel
+                    {
+                        Title = c.Title,
+                        Category = c.Category,
+                        DateText = c.DueDateText,
+                        Points = c.Points
+                    }).ToList();
+            }
+
+            isAdmin = users.Any(u => u.IsAdmin);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OnCategoryChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        if (val == "__NEW__")
+        {
+            isCustomCategory = true;
+        }
+        else
+        {
+            isCustomCategory = false;
+            selectedCategory = val ?? "CLEANING";
+        }
+    }
+
+    private async Task SaveSettings()
+    {
+        isSaving = true;
+        try
+        {
+            await ApartmentState.SaveAsync(aptName, rewardThreshold, resetSchedule);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task CreateChore()
+    {
+        if (string.IsNullOrWhiteSpace(newChoreName)) return;
+
+        isSubmittingChore = true;
+        choreSuccessMessage = string.Empty;
+
+        try
+        {
+            string categoryToUse = isCustomCategory ? customCategoryName.Trim() : selectedCategory;
+            if (string.IsNullOrWhiteSpace(categoryToUse)) categoryToUse = "CLEANING";
+
+            await ChoresClient.CreateChoreAsync(new CreateChoreDto
+            {
+                Title = newChoreName,
+                Category = categoryToUse,
+                Points = newChorePoints,
+                DueDateText = string.IsNullOrWhiteSpace(newChoreDueDate) ? "Today" : newChoreDueDate,
+                UserId = roommates.FirstOrDefault(r => r.IsCurrent)?.Id ?? 1
+            });
+
+            var updatedCats = await ChoresClient.GetCategoriesAsync();
+            categories = updatedCats.ToList();
+
+            newChoreName = string.Empty;
+            customCategoryName = string.Empty;
+            newChoreDueDate = "Today";
+            isCustomCategory = false;
+            choreSuccessMessage = "New chore created successfully!";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error creating new chore: {ex.Message}");
+        }
+        finally
+        {
+            isSubmittingChore = false;
+        }
+    }
+
+    private void ToggleAdminMode() => isAdmin = !isAdmin;
+
+    public void Dispose()
+    {
+        ApartmentState.OnChange -= StateHasChanged;
+    }
+}
+
+<style>
+    .extra-small { font-size: 0.75rem; }
+</style>

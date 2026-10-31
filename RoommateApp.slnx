@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="RoommateApp.Bll/RoommateApp.Bll.csproj" />
+  <Project Path="RoommateApp.Db/RoommateApp.Db.csproj" />
+  <Project Path="RoommateApp.Web/RoommateApp.Web.Client/RoommateApp.Web.Client.csproj" />
+  <Project Path="RoommateApp.Web/RoommateApp.Web/RoommateApp.Web.csproj" />
+</Solution>

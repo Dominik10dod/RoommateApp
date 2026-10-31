@@ -1,0 +1,448 @@
+﻿@page "/"
+@using Radzen
+@using Radzen.Blazor
+@using RoommateApp.Web.Client
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Web
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inject ChoresClient ChoresClient
+@inject UsersClient UsersClient
+@inject NavigationManager Navigation
+@using RoommateApp.Web.Client.Services
+@inject ApartmentStateService ApartmentState
+@implements IDisposable
+
+<div class="p-3 p-md-4">
+    <!-- Top Header / Navbar -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 p-3 bg-white">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                    <RadzenIcon Icon="check_box" Style="font-size: 1.5rem;" />
+                </div>
+                <div>
+                    <h1 class="h5 fw-bold m-0 text-dark">ChoreBoard</h1>
+                    <span class="text-muted small">@ApartmentState.ApartmentName</span>
+                </div>
+            </div>
+
+            <div class="bg-light p-1 rounded-pill d-none d-md-flex gap-1">
+                <button class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">Roommate Board</button>
+                <button class="btn btn-light btn-sm rounded-pill px-3 text-secondary border-0">Stats & Analytics</button>
+                <button class="btn btn-light btn-sm rounded-pill px-3 text-secondary border-0" @onclick='() => Navigation.NavigateTo("/controls")'>Controls</button>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-light btn-sm rounded-circle border p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                    <RadzenIcon Icon="notifications" Style="font-size: 1.2rem; color: #64748b;" />
+                </button>
+                <div class="d-flex align-items-center gap-2 px-3 py-1 rounded-pill" style="background-color: #e0e7ff; color: #4338ca;">
+                    <RadzenIcon Icon="emoji_events" Style="font-size: 1.2rem; color: #4338ca;" />
+                    <span class="fw-bold small">@totalApartmentPoints pts</span>
+                </div>
+                <RadzenAvatar Image="https://i.pravatar.cc/150?img=11" Size="AvatarSize.Medium" class="rounded-circle" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Subheader Section -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="h3 fw-bold m-0 text-dark">Roommate Board</h2>
+            <p class="text-muted small m-0">Drag cards to update state. Complete chores to earn points!</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-white btn-sm border bg-white rounded-2 px-3 text-secondary">Filter by Person</button>
+            <button class="btn btn-white btn-sm border bg-white rounded-2 px-3 text-secondary">Weekly Reward</button>
+            <button class="btn btn-white btn-sm border bg-white rounded-2 px-3 text-secondary d-flex align-items-center gap-1" @onclick="TogglePanel">
+                <RadzenIcon Icon="@(isPanelHidden ? "visibility" : "visibility_off")" Style="font-size: 1rem;" /> 
+                @(isPanelHidden ? "Show Panel" : "Hide Panel")
+            </button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex align-items-center justify-content-center p-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Adatok betöltése az adatbázisból...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Main Grid -->
+        <RadzenRow class="g-4">
+            <!-- Left Kanban Area -->
+            <RadzenColumn Size="12" SizeLg="@(isPanelHidden ? 12 : 9)">
+                <RadzenRow class="g-3">
+
+                    <!-- Column 1: To Do -->
+                    <RadzenColumn Size="12" SizeMd="4" class="d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <h3 class="h6 fw-bold m-0 text-dark">To Do</h3>
+                                <span class="badge bg-light text-secondary border rounded-pill px-2">@toDoChores.Count</span>
+                            </div>
+                            <RadzenIcon Icon="add" Style="cursor: pointer; color: #64748b;" />
+                        </div>
+
+                        <!-- Drop Zone: ToDo (flex-grow-1 hozzáadva) -->
+                        <div class="d-flex flex-column gap-3 drop-zone p-2 rounded-3 flex-grow-1"
+                             @ondragover:preventDefault
+                             @ondrop='() => HandleDrop("ToDo")'>
+                            @foreach (var chore in toDoChores)
+                            {
+                                @RenderChoreCard(chore)
+                            }
+                        </div>
+                    </RadzenColumn>
+
+                    <!-- Column 2: In Progress -->
+                    <RadzenColumn Size="12" SizeMd="4" class="d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <h3 class="h6 fw-bold m-0 text-dark">In Progress</h3>
+                                <span class="badge bg-light text-secondary border rounded-pill px-2">@inProgressChores.Count</span>
+                            </div>
+                            <RadzenIcon Icon="add" Style="cursor: pointer; color: #64748b;" />
+                        </div>
+
+                        <!-- Drop Zone: InProgress (flex-grow-1 hozzáadva) -->
+                        <div class="d-flex flex-column gap-3 drop-zone p-2 rounded-3 flex-grow-1"
+                             @ondragover:preventDefault
+                             @ondrop='() => HandleDrop("InProgress")'>
+                            @foreach (var chore in inProgressChores)
+                            {
+                                @RenderChoreCard(chore)
+                            }
+                        </div>
+                    </RadzenColumn>
+
+                    <!-- Column 3: Done -->
+                    <RadzenColumn Size="12" SizeMd="4" class="d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <h3 class="h6 fw-bold m-0 text-dark">Done</h3>
+                                <span class="badge bg-light text-secondary border rounded-pill px-2">@doneChores.Count</span>
+                            </div>
+                            <RadzenIcon Icon="add" Style="cursor: pointer; color: #64748b;" />
+                        </div>
+
+                        <!-- Drop Zone: Done (flex-grow-1 hozzáadva) -->
+                        <div class="d-flex flex-column gap-3 drop-zone p-2 rounded-3 flex-grow-1"
+                             @ondragover:preventDefault
+                             @ondrop='() => HandleDrop("Done")'>
+                            @foreach (var chore in doneChores)
+                            {
+                                @RenderChoreCard(chore)
+                            }
+                        </div>
+                    </RadzenColumn>
+
+                </RadzenRow>
+            </RadzenColumn>
+
+            <!-- Right Sidebar Area -->
+            @if (!isPanelHidden)
+            {
+                <RadzenColumn Size="12" SizeLg="3">
+                    <div class="d-flex flex-column gap-4">
+                        <!-- Widget 1: Live Leaderboard -->
+                        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <RadzenIcon Icon="emoji_events" Style="color: #eab308; font-size: 1.2rem;" />
+                                    <h3 class="h6 fw-bold m-0 text-dark">Live Leaderboard</h3>
+                                </div>
+                                <span class="text-uppercase text-muted extra-small fw-bold">@currentMonth</span>
+                            </div>
+
+                            <div class="d-flex flex-column gap-2 mb-3">
+                                @{
+                                    int rank = 1;
+                                    int maxPoints = leaderboard.Any() ? leaderboard.Max(l => l.Points) : 1;
+                                    if (maxPoints == 0) maxPoints = 1;
+                                }
+                                @foreach (var userStat in leaderboard)
+                                {
+                                    bool isFirst = rank == 1;
+                                    int progress = (userStat.Points * 100) / maxPoints;
+
+                                    <div class="p-2 rounded-3 @(isFirst ? "border border-primary-subtle bg-primary-subtle bg-opacity-25" : "")">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="fw-bold @(isFirst ? "text-primary" : "text-muted") small">@rank</span>
+                                                <RadzenAvatar Image="@userStat.AvatarUrl" Size="AvatarSize.ExtraSmall" class="rounded-circle" />
+                                                <span class="fw-bold small text-dark">@userStat.Name @(isFirst ? "(Élen)" : "")</span>
+                                            </div>
+                                            <span class="fw-bold @(isFirst ? "text-primary" : "text-dark") small">@userStat.Points pts</span>
+                                        </div>
+                                        <RadzenProgressBar Value="@progress" ShowValue="false" class="mt-2" Style="height: 5px;" />
+                                    </div>
+
+                                    rank++;
+                                }
+                            </div>
+
+                            <div class="p-3 rounded-3 bg-light">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-uppercase text-muted fw-bold extra-small">APARTMENT REWARD</span>
+                                    <span class="fw-bold text-primary extra-small">@totalApartmentPoints / 5,000 pts</span>
+                                </div>
+                                <p class="m-0 text-muted extra-small">
+                                    Reach 5,000 points collectively to unlock Friday Pizza Night! 🍕
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Widget 2: Weekly Stats -->
+                        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <RadzenIcon Icon="bar_chart" Style="color: #6366f1; font-size: 1.2rem;" />
+                                <h3 class="h6 fw-bold m-0 text-dark">Weekly Stats</h3>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <div class="p-2 bg-light rounded-3">
+                                        <div class="text-uppercase text-muted fw-bold extra-small d-flex align-items-center gap-1">
+                                            <RadzenIcon Icon="local_fire_department" Style="color: #ef4444; font-size: 0.9rem;" /> STREAK
+                                        </div>
+                                        <div class="h4 fw-bold m-0 mt-1 text-dark">5 <small class="text-muted fs-6 fw-normal">days</small></div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 bg-light rounded-3">
+                                        <div class="text-uppercase text-muted fw-bold extra-small d-flex align-items-center gap-1">
+                                            <RadzenIcon Icon="check_circle" Style="color: #10b981; font-size: 0.9rem;" /> DONE WEEKLY
+                                        </div>
+                                        <div class="h4 fw-bold m-0 mt-1 text-dark">@doneChores.Count <small class="text-muted fs-6 fw-normal">chores</small></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if (leaderboard.Any())
+                            {
+                                <div class="p-2 rounded-3 bg-light d-flex align-items-start gap-2">
+                                    <RadzenIcon Icon="electric_bolt" Style="color: #eab308; font-size: 1.1rem;" />
+                                    <span class="text-muted extra-small">
+                                        <strong>@leaderboard.First().Name</strong> vezeti jelenleg a ranglistát!
+                                    </span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </RadzenColumn>
+            }
+        </RadzenRow>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private bool isPanelHidden = false;
+    private string currentMonth = DateTime.Now.ToString("MMMM", CultureInfo.CreateSpecificCulture("en-US")).ToUpper();
+
+    private List<ChoreDto> allChores = new();
+    private List<UserDto> allUsers = new();
+
+    private List<ChoreDto> toDoChores = new();
+    private List<ChoreDto> inProgressChores = new();
+    private List<ChoreDto> doneChores = new();
+    private List<LeaderboardUser> leaderboard = new();
+    private int totalApartmentPoints = 0;
+
+    private ChoreDto? draggedChore;
+
+    public class LeaderboardUser
+    {
+        public int UserId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public int Points { get; set; }
+        public string AvatarUrl { get; set; } = string.Empty;
+    }
+
+    private void TogglePanel()
+    {
+        isPanelHidden = !isPanelHidden;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ApartmentState.OnChange += StateHasChanged;
+        await ApartmentState.LoadAsync();
+
+        try
+        {
+            var chores = await ChoresClient.GetChoresAsync();
+            var users = await UsersClient.GetUsersAsync();
+
+            allChores = chores.ToList();
+            allUsers = users.ToList();
+
+            RefreshBoardAndLeaderboard();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Hiba az adatok lekérésekor: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        ApartmentState.OnChange -= StateHasChanged;
+    }
+
+    private void HandleDragStart(ChoreDto chore)
+    {
+        draggedChore = chore;
+    }
+
+    private async Task HandleDrop(string targetStatus)
+    {
+        if (draggedChore != null && draggedChore.Status != targetStatus)
+        {
+            draggedChore.Status = targetStatus;
+
+            // Ha a "Done" oszlopba került, az áthúzó személy kapja meg a feladatot
+            if (targetStatus == "Done")
+            {
+                if (!draggedChore.DueDateText.StartsWith("Done"))
+                {
+                    var todayStr = DateTime.Now.ToString("MMM dd", CultureInfo.CreateSpecificCulture("en-US"));
+                    draggedChore.DueDateText = $"Done · {todayStr}";
+                }
+
+                var activeUser = allUsers.FirstOrDefault(u => u.IsAdmin) ?? allUsers.FirstOrDefault();
+                if (activeUser != null)
+                {
+                    draggedChore.UserId = activeUser.Id;
+                    draggedChore.UserName = activeUser.Name;
+                    draggedChore.UserAvatarUrl = $"https://i.pravatar.cc/150?img={activeUser.Id + 10}";
+                }
+            }
+
+            // Felület és Leaderboard azonnali frissítése
+            RefreshBoardAndLeaderboard();
+
+            // REST API HÍVÁS: Végleges elmentés az SQL Server adatbázisba
+            try
+            {
+                await ChoresClient.UpdateChoreAsync(draggedChore.Id, new UpdateChoreDto
+                {
+                    Id = draggedChore.Id,
+                    Status = draggedChore.Status,
+                    UserId = draggedChore.UserId,
+                    DueDateText = draggedChore.DueDateText
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Hiba a feladat mentésekor: {ex.Message}");
+            }
+
+            draggedChore = null;
+        }
+    }
+
+    private void RefreshBoardAndLeaderboard()
+    {
+        toDoChores = allChores.Where(c => c.Status == "ToDo").ToList();
+        inProgressChores = allChores.Where(c => c.Status == "InProgress").ToList();
+        doneChores = allChores.Where(c => c.Status == "Done").ToList();
+
+        leaderboard = allUsers.Select(u =>
+        {
+            int userPoints = allChores
+                .Where(c => c.UserId == u.Id && c.Status == "Done")
+                .Sum(c => c.Points);
+
+            return new LeaderboardUser
+            {
+                UserId = u.Id,
+                Name = u.Name,
+                Points = userPoints,
+                AvatarUrl = $"https://i.pravatar.cc/150?img={u.Id + 10}"
+            };
+        })
+        .OrderByDescending(u => u.Points)
+        .ToList();
+
+        totalApartmentPoints = leaderboard.Sum(u => u.Points);
+    }
+
+    private RenderFragment RenderChoreCard(ChoreDto chore)
+    {
+        string categoryBg = chore.Category switch
+        {
+            "CLEANING" => "#dcfce7",
+            "MAINTENANCE" => "#ffe4e6",
+            "SHOPPING" => "#fef9c3",
+            _ => "#e2e8f0"
+        };
+
+        string categoryColor = chore.Category switch
+        {
+            "CLEANING" => "#15803d",
+            "MAINTENANCE" => "#be123c",
+            "SHOPPING" => "#a16207",
+            _ => "#475569"
+        };
+
+        return @<div class="card border shadow-sm rounded-3 p-3 bg-white task-card"
+                     draggable="true"
+                     @ondragstart='() => HandleDragStart(chore)'>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-bold px-2 py-1 rounded" style="font-size: 0.65rem; background-color: @categoryBg; color: @categoryColor; letter-spacing: 0.5px;">@chore.Category</span>
+                <span class="fw-bold px-2 py-1 rounded-pill" style="font-size: 0.75rem; background-color: #fef9c3; color: #a16207;">⭐ +@chore.Points pts</span>
+            </div>
+            <p class="fw-bold text-dark m-0 mb-3 small">@chore.Title</p>
+            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                <div class="d-flex align-items-center gap-1 text-muted extra-small">
+                    <RadzenIcon Icon="calendar_today" Style="font-size: 0.85rem;" />
+                    <span>@chore.DueDateText</span>
+                </div>
+                <RadzenAvatar Image="@chore.UserAvatarUrl" Size="AvatarSize.ExtraSmall" class="rounded-circle" />
+            </div>
+        </div>;
+    }
+}
+
+<style>
+    .extra-small {
+        font-size: 0.75rem;
+    }
+
+    .drop-zone {
+        min-height: 600px; 
+        height: 100%;
+        background-color: transparent;
+        border: none;
+        transition: background-color 0.2s ease;
+    }
+
+        .drop-zone:hover {
+            background-color: rgba(241, 245, 249, 0.6); 
+            border-radius: 12px;
+        }
+
+    .task-card {
+        cursor: grab;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+        .task-card:active {
+            cursor: grabbing;
+            opacity: 0.6;
+        }
+
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 .5rem 1rem rgba(0,0,0,.08) !important;
+        }
+</style>

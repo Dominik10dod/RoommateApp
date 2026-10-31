@@ -1,0 +1,66 @@
+﻿@page "/old-home"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inject RoommateApp.Web.Client.UsersClient UsersClient
+
+<PageTitle>Lakótársak</PageTitle>
+
+<div class="container mt-4">
+    <h2>Lakótársak listája (NSwag REST API Klienssel)</h2>
+    <p class="text-muted">Az adatok az SQL Server adatbázisból érkeznek a Web API-n keresztül:</p>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger shadow-sm" role="alert">
+            <h5 class="alert-heading">Hiba történt az API hívás közben!</h5>
+            <pre class="mb-0" style="white-space: pre-wrap;">@errorMessage</pre>
+        </div>
+    }
+    else if (users == null)
+    {
+        <div class="d-flex align-items-center gap-2">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Betöltés...</span>
+            </div>
+            <span>Adatok lekérése a szervertől...</span>
+        </div>
+    }
+    else if (!users.Any())
+    {
+        <div class="alert alert-warning">
+            Nem található felhasználó az adatbázisban!
+        </div>
+    }
+    else
+    {
+        <ul class="list-group shadow-sm">
+            @foreach (var user in users)
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong class="fs-5">@user.Name</strong>
+                        <div class="text-secondary small">@user.Email</div>
+                    </div>
+                    <span class="badge bg-primary rounded-pill">ID: @user.Id</span>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    private ICollection<UserDto>? users;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            users = await UsersClient.GetUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            Console.WriteLine($"Hiba az API hívás közben: {ex}");
+        }
+    }
+}

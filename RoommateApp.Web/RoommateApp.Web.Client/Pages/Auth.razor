@@ -1,0 +1,254 @@
+﻿@page "/login"
+@using Radzen
+@using Radzen.Blazor
+@using RoommateApp.Web.Client
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inject UsersClient UsersClient
+@inject NavigationManager Navigation
+
+<div class="auth-container d-flex flex-column justify-content-between p-4 p-md-5">
+    <!-- Top Bar -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center gap-2">
+            <div class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                <RadzenIcon Icon="check_box" Style="font-size: 1.3rem;" />
+            </div>
+            <span class="fw-bold fs-5 text-dark">ChoreBoard</span>
+        </div>
+        <div class="small">
+            <span class="text-muted">Need help? </span>
+            <a href="#" class="text-primary text-decoration-none fw-bold">Contact Support</a>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="row align-items-center my-auto g-5">
+        <!-- Left Hero Section -->
+        <div class="col-lg-6">
+            <h1 class="display-5 fw-bold text-dark lh-sm mb-4">
+                Keep your home clean,<br />
+                rewards high, and<br />
+                roommates happy.
+            </h1>
+            <p class="text-secondary fs-6 mb-5 style-max-width">
+                The chore tracking app designed specifically for shared households. Track weekly tasks, claim high-value chores, and compete for Friday night rewards.
+            </p>
+
+            <!-- Bottom Left Widget Box -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white style-max-width">
+                <div class="d-flex align-items-start gap-3 mb-4">
+                    <div class="bg-warning-subtle p-2 rounded-3 text-warning">
+                        <RadzenIcon Icon="star_outline" Style="font-size: 1.4rem;" />
+                    </div>
+                    <div>
+                        <h6 class="fw-bold text-dark m-0">Friday Pizza Night is unlocked!</h6>
+                        <span class="text-muted small">Collective points reach 5,240 / 5,000 pts this week.</span>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="bg-light p-3 rounded-3 d-flex align-items-center gap-2">
+                            <span class="fw-bold fs-4 text-primary">14</span>
+                            <span class="text-muted extra-small fw-semibold">Chores Completed</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="bg-light p-3 rounded-3 d-flex align-items-center gap-2">
+                            <span class="fw-bold fs-4 text-success">5d</span>
+                            <span class="text-muted extra-small fw-semibold">Active Clean Streak</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Auth Form Card -->
+        <div class="col-lg-5 offset-lg-1">
+            <div class="card border-0 shadow-lg rounded-4 p-4 p-sm-5 bg-white">
+                <!-- Tab Selector (Sign In / Sign Up) -->
+                <div class="bg-light p-1 rounded-pill d-flex mb-4">
+                    <button class="btn btn-sm rounded-pill flex-fill fw-bold @(isSignIn ? "btn-white shadow-sm text-dark" : "btn-light text-secondary border-0")"
+                            @onclick="() => SetTab(true)">
+                        Sign In
+                    </button>
+                    <button class="btn btn-sm rounded-pill flex-fill fw-bold @(!isSignIn ? "btn-white shadow-sm text-dark" : "btn-light text-secondary border-0")"
+                            @onclick="() => SetTab(false)">
+                        Sign Up
+                    </button>
+                </div>
+
+                <!-- Form Header -->
+                <h3 class="fw-bold text-dark mb-1">@(isSignIn ? "Welcome back" : "Create an account")</h3>
+                <p class="text-muted small mb-4">
+                    @(isSignIn ? "Enter your room credentials to view the whiteboard." : "Fill in your details to join your roommate board.")
+                </p>
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger py-2 small mb-3">@errorMessage</div>
+                }
+
+                <!-- Dynamic Form Fields -->
+                <div class="d-flex flex-column gap-3">
+                    @if (!isSignIn)
+                    {
+                        <div>
+                            <label class="form-label extra-small fw-bold text-secondary mb-1">Full Name</label>
+                            <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle"
+                                   placeholder="Sarah Connor" @bind="nameInput" />
+                        </div>
+                    }
+
+                    <div>
+                        <label class="form-label extra-small fw-bold text-secondary mb-1">Email Address</label>
+                        <input type="email" class="form-control rounded-3 py-2 px-3 border-light-subtle"
+                               placeholder="sarah@apt4b.com" @bind="emailInput" />
+                    </div>
+
+                    <div>
+                        <label class="form-label extra-small fw-bold text-secondary mb-1">Password</label>
+                        <div class="position-relative">
+                            <input type="@(showPassword ? "text" : "password")"
+                                   class="form-control rounded-3 py-2 px-3 border-light-subtle pe-5"
+                                   placeholder="••••••••••••" @bind="passwordInput" />
+                            <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted pe-3"
+                                    @onclick="() => showPassword = !showPassword">
+                                <RadzenIcon Icon="@(showPassword ? "visibility_off" : "visibility")" Style="font-size: 1.1rem;" />
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (isSignIn)
+                    {
+                        <div class="d-flex justify-content-between align-items-center extra-small mt-1">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="rememberMe" @bind="rememberMe">
+                                <label class="form-check-label text-secondary fw-semibold" for="rememberMe">
+                                    Remember me
+                                </label>
+                            </div>
+                            <a href="#" class="text-primary text-decoration-none fw-bold">Forgot password?</a>
+                        </div>
+                    }
+
+                    <!-- Submit Button -->
+                    <button class="btn btn-primary rounded-3 py-2 fw-bold w-100 mt-2"
+                            style="background-color: #6366f1; border: none;"
+                            @onclick="HandleSubmit" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        @(isSignIn ? "Sign In" : "Sign Up")
+                    </button>
+
+                    <div class="position-relative my-2 text-center">
+                        <hr class="text-muted opacity-25" />
+                    </div>
+
+                    <!-- Secondary Google Action -->
+                    <button class="btn btn-outline-secondary rounded-3 py-2 fw-bold w-100 bg-white text-dark border-light-subtle extra-small">
+                        Sign In with Google
+                    </button>
+
+                    <div class="text-center mt-3 extra-small">
+                        <span class="text-muted">New apartment group? </span>
+                        <a href="#" class="text-primary text-decoration-none fw-bold">Create an Apartment Room</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool isSignIn = true;
+    private bool showPassword = false;
+    private bool rememberMe = true;
+    private bool isSubmitting = false;
+
+    private string nameInput = string.Empty;
+    private string emailInput = "sarah@apt4b.com";
+    private string passwordInput = "roommatesrock1";
+    private string errorMessage = string.Empty;
+
+    private void SetTab(bool signIn)
+    {
+        isSignIn = signIn;
+        errorMessage = string.Empty;
+    }
+
+    private async Task HandleSubmit()
+    {
+        errorMessage = string.Empty;
+        isSubmitting = true;
+
+        try
+        {
+            if (isSignIn)
+            {
+                // Bejelentkezés REST API-n keresztül
+                var result = await UsersClient.LoginAsync(new LoginDto
+                {
+                    Email = emailInput,
+                    Password = passwordInput
+                });
+
+                if (result != null)
+                {
+                    Navigation.NavigateTo("/"); // Átirányítás a ChoreBoard kezdőlapra
+                }
+            }
+            else
+            {
+                // Új lakótárs regisztrációja az adatbázisba
+                if (string.IsNullOrWhiteSpace(nameInput))
+                {
+                    errorMessage = "Kérjük, add meg a nevedet!";
+                    return;
+                }
+
+                var result = await UsersClient.RegisterAsync(new RegisterDto
+                {
+                    Name = nameInput,
+                    Email = emailInput,
+                    Password = passwordInput
+                });
+
+                if (result != null)
+                {
+                    Navigation.NavigateTo("/"); // Átirányítás a ChoreBoard kezdőlapra
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "A művelet nem sikerült! Ellenőrizd az adataidat.";
+            Console.WriteLine($"Auth Hiba: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}
+
+<style>
+    .auth-container {
+        min-height: 100vh;
+        background-color: #f8fafc;
+    }
+
+    .style-max-width {
+        max-width: 520px;
+    }
+
+    .btn-white {
+        background-color: #ffffff;
+    }
+
+    .extra-small {
+        font-size: 0.75rem;
+    }
+</style>
