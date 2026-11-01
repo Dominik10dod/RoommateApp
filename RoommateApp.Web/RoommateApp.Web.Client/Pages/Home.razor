@@ -1,6 +1,8 @@
 ﻿@page "/old-home"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject RoommateApp.Web.Client.UsersClient UsersClient
+@using RoommateApp.Web.Client.Services
+@inject ApartmentStateService ApartmentState
 
 <PageTitle>Lakótársak</PageTitle>
 
@@ -55,7 +57,7 @@
     {
         try
         {
-            users = await UsersClient.GetUsersAsync();
+            var users = await UsersClient.GetUsersByApartmentAsync(ApartmentState.Id);
         }
         catch (Exception ex)
         {

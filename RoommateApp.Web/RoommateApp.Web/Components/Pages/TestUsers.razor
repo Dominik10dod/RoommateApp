@@ -29,6 +29,6 @@ else
     protected override async Task OnInitializedAsync()
     {
         // Közvetlenül meghívjuk a Bll szolgáltatást, ami lekéri az adatot az adatbázisból
-        users = await UserService.GetUsersAsync();
+        await UserService.GetUsersByApartmentAsync(1);
     }
 }

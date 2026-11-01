@@ -12,9 +12,24 @@ namespace RoommateApp.Db.Context
 
         public DbSet<Apartment> Apartments { get; set; }
 
+        public DbSet<UserApartment> UserApartments { get; set; } = null!;
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
+        {  
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<UserApartment>()
+                .HasKey(ua => new { ua.UserId, ua.ApartmentId });
+
+            modelBuilder.Entity<UserApartment>()
+                .HasOne(ua => ua.User)
+                .WithMany(u => u.UserApartments)
+                .HasForeignKey(ua => ua.UserId);
+
+            modelBuilder.Entity<UserApartment>()
+                .HasOne(ua => ua.Apartment)
+                .WithMany(a => a.UserApartments)
+                .HasForeignKey(ua => ua.ApartmentId);
 
             modelBuilder.Entity<Apartment>().HasData(
                 new Apartment { Id = 1, Name = "Apartment 4B", RewardThreshold = 5000, ResetSchedule = "Sunday 12:00 AM" }

@@ -3,9 +3,11 @@ using Radzen;
 using RoommateApp.Web.Client;
 using RoommateApp.Web.Client.Services;
 
+
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
 builder.Services.AddRadzenComponents();
+builder.Services.AddScoped<UserSessionService>();
 
 builder.Services.AddScoped(sp => new HttpClient
 {

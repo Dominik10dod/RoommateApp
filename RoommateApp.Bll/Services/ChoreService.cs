@@ -59,7 +59,7 @@ namespace RoommateApp.Bll.Services
             };
 
             _context.Chores.Add(chore);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(); 
 
             var user = await _context.Users.FindAsync(chore.UserId);
 

@@ -10,5 +10,6 @@ namespace RoommateApp.Bll.DTOs
         public string Name { get; set; } = string.Empty;
         public int RewardThreshold { get; set; }
         public string ResetSchedule { get; set; } = string.Empty;
+        public string InviteCode { get; set; } = string.Empty; // ÚJ
     }
 }

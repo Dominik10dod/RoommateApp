@@ -15,31 +15,56 @@ namespace RoommateApp.Web.Controllers
             _userService = userService;
         }
 
-        [HttpGet]
-        public async Task<ActionResult<List<UserDto>>> GetUsers()
+        [HttpPost("login")]
+        public async Task<ActionResult<UserDto>> Login(LoginDto dto)
         {
-            var users = await _userService.GetUsersAsync();
-            return Ok(users);
+            var user = await _userService.LoginAsync(dto);
+            if (user == null) return Unauthorized();
+            return Ok(user);
         }
 
         [HttpPost("register")]
-        public async Task<ActionResult<UserDto>> Register([FromBody] RegisterDto dto)
+        public async Task<ActionResult<UserDto>> Register(RegisterDto dto)
         {
             var user = await _userService.RegisterAsync(dto);
-            if (user == null)
-                return BadRequest("Ez az e-mail cím már regisztrálva van!");
-
             return Ok(user);
         }
 
-        [HttpPost("login")]
-        public async Task<ActionResult<UserDto>> Login([FromBody] LoginDto dto)
+        [HttpGet("apartment/{apartmentId}")]
+        public async Task<ActionResult<List<UserDto>>> GetUsersByApartment(int apartmentId)
         {
-            var user = await _userService.LoginAsync(dto);
-            if (user == null)
-                return Unauthorized("Hibás e-mail cím vagy jelszó!");
+            var users = await _userService.GetUsersByApartmentAsync(apartmentId);
+            return Ok(users);
+        }
 
-            return Ok(user);
+        [HttpGet("{userId}/apartments")]
+        public async Task<ActionResult<List<ApartmentDto>>> GetUserApartments(int userId)
+        {
+            var apartments = await _userService.GetUserApartmentsAsync(userId);
+            return Ok(apartments);
+        }
+
+        [HttpPost("{userId}/create-apartment")]
+        public async Task<ActionResult<ApartmentDto>> CreateApartment(int userId, [FromQuery] string roomName)
+        {
+            var apt = await _userService.CreateApartmentForUserAsync(userId, roomName);
+            return Ok(apt);
+        }
+
+        [HttpPost("{userId}/join-apartment")]
+        public async Task<IActionResult> JoinApartment(int userId, [FromQuery] string inviteCode)
+        {
+            var success = await _userService.JoinApartmentByCodeAsync(userId, inviteCode);
+            if (!success) return BadRequest("Érvénytelen kód!");
+            return Ok();
+        }
+
+        [HttpPost("{userId}/remove-from-apartment/{apartmentId}")]
+        public async Task<IActionResult> RemoveFromApartment(int userId, int apartmentId)
+        {
+            var success = await _userService.RemoveUserFromApartmentAsync(userId, apartmentId);
+            if (!success) return NotFound();
+            return Ok();
         }
     }
 }

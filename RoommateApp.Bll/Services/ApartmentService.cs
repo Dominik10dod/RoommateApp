@@ -36,20 +36,24 @@ namespace RoommateApp.Bll.Services
         public async Task<ApartmentDto> UpdateApartmentAsync(ApartmentDto dto)
         {
             var apt = await _context.Apartments.FirstOrDefaultAsync();
-            if (apt != null)
+            if (apt == null)
             {
-                apt.Name = dto.Name;
-                apt.RewardThreshold = dto.RewardThreshold;
-                apt.ResetSchedule = dto.ResetSchedule;
-                await _context.SaveChangesAsync();
+                apt = new Apartment();
+                _context.Apartments.Add(apt);
             }
+
+            apt.Name = dto.Name;
+            apt.RewardThreshold = dto.RewardThreshold;
+            apt.ResetSchedule = dto.ResetSchedule;
+
+            await _context.SaveChangesAsync(); 
 
             return new ApartmentDto
             {
-                Id = apt?.Id ?? 1,
-                Name = apt?.Name ?? dto.Name,
-                RewardThreshold = apt?.RewardThreshold ?? dto.RewardThreshold,
-                ResetSchedule = apt?.ResetSchedule ?? dto.ResetSchedule
+                Id = apt.Id,
+                Name = apt.Name,
+                RewardThreshold = apt.RewardThreshold,
+                ResetSchedule = apt.ResetSchedule
             };
         }
     }

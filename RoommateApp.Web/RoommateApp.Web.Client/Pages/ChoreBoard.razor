@@ -10,39 +10,16 @@
 @inject NavigationManager Navigation
 @using RoommateApp.Web.Client.Services
 @inject ApartmentStateService ApartmentState
+@using RoommateApp.Web.Client.Services
+@inject UserSessionService UserSession
 @implements IDisposable
 
 <div class="p-3 p-md-4">
-    <!-- Top Header / Navbar -->
-    <div class="card border-0 shadow-sm rounded-4 mb-4 p-3 bg-white">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-            <div class="d-flex align-items-center gap-3">
-                <div class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
-                    <RadzenIcon Icon="check_box" Style="font-size: 1.5rem;" />
-                </div>
-                <div>
-                    <h1 class="h5 fw-bold m-0 text-dark">ChoreBoard</h1>
-                    <span class="text-muted small">@ApartmentState.ApartmentName</span>
-                </div>
-            </div>
+    <div class="p-3 p-md-4">
+        <!-- Egységes Fejléc Komponens -->
+        <AppHeader ActivePage="Board" />
 
-            <div class="bg-light p-1 rounded-pill d-none d-md-flex gap-1">
-                <button class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">Roommate Board</button>
-                <button class="btn btn-light btn-sm rounded-pill px-3 text-secondary border-0">Stats & Analytics</button>
-                <button class="btn btn-light btn-sm rounded-pill px-3 text-secondary border-0" @onclick='() => Navigation.NavigateTo("/controls")'>Controls</button>
-            </div>
-
-            <div class="d-flex align-items-center gap-3">
-                <button class="btn btn-light btn-sm rounded-circle border p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
-                    <RadzenIcon Icon="notifications" Style="font-size: 1.2rem; color: #64748b;" />
-                </button>
-                <div class="d-flex align-items-center gap-2 px-3 py-1 rounded-pill" style="background-color: #e0e7ff; color: #4338ca;">
-                    <RadzenIcon Icon="emoji_events" Style="font-size: 1.2rem; color: #4338ca;" />
-                    <span class="fw-bold small">@totalApartmentPoints pts</span>
-                </div>
-                <RadzenAvatar Image="https://i.pravatar.cc/150?img=11" Size="AvatarSize.Medium" class="rounded-circle" />
-            </div>
-        </div>
+        <!-- Subheader Section... -->
     </div>
 
     <!-- Subheader Section -->
@@ -188,10 +165,10 @@
                             <div class="p-3 rounded-3 bg-light">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <span class="text-uppercase text-muted fw-bold extra-small">APARTMENT REWARD</span>
-                                    <span class="fw-bold text-primary extra-small">@totalApartmentPoints / 5,000 pts</span>
+                                    <span class="fw-bold text-primary extra-small">@totalApartmentPoints / @ApartmentState.RewardThreshold.ToString("N0") pts</span>
                                 </div>
                                 <p class="m-0 text-muted extra-small">
-                                    Reach 5,000 points collectively to unlock Friday Pizza Night! 🍕
+                                    Reach @ApartmentState.RewardThreshold.ToString("N0") points collectively to unlock Friday Pizza Night! 🍕
                                 </p>
                             </div>
                         </div>
@@ -270,13 +247,21 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!UserSession.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
         ApartmentState.OnChange += StateHasChanged;
-        await ApartmentState.LoadAsync();
+        UserSession.OnChange += StateHasChanged;
 
         try
         {
+            await ApartmentState.LoadAsync();
+
             var chores = await ChoresClient.GetChoresAsync();
-            var users = await UsersClient.GetUsersAsync();
+            var users = await UsersClient.GetUsersByApartmentAsync(ApartmentState.Id);
 
             allChores = chores.ToList();
             allUsers = users.ToList();

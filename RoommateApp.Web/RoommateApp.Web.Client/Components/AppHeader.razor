@@ -1,0 +1,234 @@
+﻿@using Radzen
+@using Radzen.Blazor
+@using RoommateApp.Web.Client
+@using RoommateApp.Web.Client.Services
+@implements IDisposable
+@inject ApartmentStateService ApartmentState
+@inject UserSessionService UserSession
+@inject UsersClient UsersClient
+@inject ChoresClient ChoresClient
+@inject NavigationManager Navigation
+
+<!-- Top Header / Navbar -->
+<div class="card border-0 shadow-sm rounded-4 mb-4 p-3 bg-white">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+
+        <!-- Logo & Szoba név -->
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                <RadzenIcon Icon="check_box" Style="font-size: 1.5rem;" />
+            </div>
+            <div>
+                <h1 class="h5 fw-bold m-0 text-dark">ChoreBoard</h1>
+                <span class="text-muted small">@ApartmentState.ApartmentName</span>
+            </div>
+        </div>
+
+        <!-- Navigációs gombok -->
+        <div class="bg-light p-1 rounded-pill d-none d-md-flex gap-1">
+            <button class="btn btn-sm rounded-pill px-3 @(ActivePage == "Board" ? "btn-primary shadow-sm" : "btn-light text-secondary border-0")"
+                    @onclick='() => Navigation.NavigateTo("/")'>
+                Roommate Board
+            </button>
+            <button class="btn btn-sm rounded-pill px-3 @(ActivePage == "Stats" ? "btn-primary shadow-sm" : "btn-light text-secondary border-0")">
+                Stats & Analytics
+            </button>
+            <button class="btn btn-sm rounded-pill px-3 @(ActivePage == "Controls" ? "btn-primary shadow-sm" : "btn-light text-secondary border-0")"
+                    @onclick='() => Navigation.NavigateTo("/controls")'>
+                Controls
+            </button>
+        </div>
+
+        <!-- Jobb oldali Értesítés, Dinamikus Pontszám & Profil Menü -->
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-light btn-sm rounded-circle border p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                <RadzenIcon Icon="notifications" Style="font-size: 1.2rem; color: #64748b;" />
+            </button>
+
+            <!-- Dinamikus felhasználói pontszám -->
+            <div class="d-flex align-items-center gap-2 px-3 py-1 rounded-pill" style="background-color: #e0e7ff; color: #4338ca;">
+                <RadzenIcon Icon="emoji_events" Style="font-size: 1.2rem; color: #4338ca;" />
+                <span class="fw-bold small">@userPoints pts</span>
+            </div>
+
+            <!-- Profilkép és Menü -->
+            <div class="position-relative">
+                <button class="btn p-0 border-0 bg-transparent" @onclick="ToggleProfileMenu">
+                    <img src="@AvatarUrl"
+                         class="rounded-circle shadow-sm border border-2 border-white"
+                         style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;"
+                         alt="User Profile" />
+                </button>
+
+                @if (isProfileMenuOpen)
+                {
+                    <div class="dropdown-menu dropdown-menu-end show shadow-lg border-0 rounded-4 p-2 position-absolute end-0 mt-2"
+                         style="width: 260px; z-index: 1050; background-color: #ffffff;">
+
+                        <div class="px-3 py-2 border-bottom mb-2">
+                            <div class="fw-bold small text-dark">@(UserSession.CurrentUser?.Name ?? "Vendég")</div>
+                            <div class="text-muted extra-small">@(UserSession.CurrentUser?.Email ?? "Nincs bejelentkezve")</div>
+                        </div>
+
+                        <button class="dropdown-item rounded-3 py-2 extra-small d-flex align-items-center gap-2" @onclick="OpenCreateRoomModal">
+                            <RadzenIcon Icon="add_circle_outline" Style="font-size: 1.1rem; color: #6366f1;" />
+                            <span class="fw-semibold text-dark">Új szoba létrehozása</span>
+                        </button>
+
+                        <div class="dropdown-divider my-1"></div>
+
+                        <!-- Szobák listázása a profil menüben -->
+                        <div class="px-3 py-1 text-uppercase text-muted extra-small fw-bold">Szobáid</div>
+                        @foreach (var room in myRooms)
+                        {
+                            <button class="dropdown-item rounded-3 py-2 extra-small d-flex justify-content-between align-items-center mb-1 @(room.Id == ApartmentState.Id ? "bg-primary-subtle text-primary fw-bold" : "text-secondary")"
+                                    @onclick="() => SwitchRoom(room.Id)">
+                                <div class="d-flex align-items-center gap-2">
+                                    <RadzenIcon Icon="home" Style="font-size: 1rem;" />
+                                    <span>@room.Name</span>
+                                </div>
+                                @if (room.Id == ApartmentState.Id)
+                                {
+                                    <RadzenIcon Icon="check" Style="font-size: 0.9rem; color: #4338ca;" />
+                                }
+                            </button>
+                        }
+
+                        <div class="dropdown-divider my-1"></div>
+
+                        <button class="dropdown-item rounded-3 py-2 extra-small text-danger d-flex align-items-center gap-2" @onclick="Logout">
+                            <RadzenIcon Icon="logout" Style="font-size: 1.1rem; color: #ef4444;" />
+                            <span class="fw-bold">Kijelentkezés</span>
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Új Szoba Létrehozása Modál -->
+@if (showCreateRoomModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 p-3">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark">Új szoba létrehozása</h5>
+                    <button type="button" class="btn-close" @onclick="CloseCreateRoomModal"></button>
+                </div>
+                <div class="modal-body py-3">
+                    <div class="mb-3">
+                        <label class="form-label extra-small fw-bold text-secondary">Szoba / Lakás neve</label>
+                        <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle"
+                               placeholder="pl. Apartment 5C vagy Budapesti Kuckó" @bind="newRoomNameInput" />
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button class="btn btn-light btn-sm rounded-pill px-3 extra-small" @onclick="CloseCreateRoomModal">Mégse</button>
+                    <button class="btn btn-primary btn-sm rounded-pill px-4 extra-small fw-bold"
+                            style="background-color: #6366f1; border: none;" @onclick="OpenCreateRoomModal">
+                        Létrehozás
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string ActivePage { get; set; } = "Board";
+
+    private bool isProfileMenuOpen = false;
+    private bool showCreateRoomModal = false;
+    private string newRoomNameInput = string.Empty;
+    private int userPoints = 0;
+
+    private string AvatarUrl => UserSession.CurrentUser != null
+        ? $"https://i.pravatar.cc/150?img={UserSession.CurrentUser.Id + 10}"
+        : "https://i.pravatar.cc/150?img=32";
+
+    private List<ApartmentDto> myRooms = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        ApartmentState.OnChange += StateHasChanged;
+        UserSession.OnChange += StateHasChanged;
+
+        await LoadUserApartments();
+    }
+
+    private async Task LoadUserApartments()
+{
+    if (UserSession.CurrentUser != null)
+    {
+        var rooms = await UsersClient.GetUserApartmentsAsync(UserSession.CurrentUser.Id);
+        if (rooms != null)
+        {
+            myRooms = rooms.ToList();
+            if (myRooms.Any() && ApartmentState.Id == 0)
+            {
+                await SwitchRoom(myRooms.First().Id);
+            }
+        }
+    }
+}
+
+    private async Task SwitchRoom(int roomId)
+    {
+        isProfileMenuOpen = false;
+        var room = myRooms.FirstOrDefault(r => r.Id == roomId);
+        if (room != null)
+        {
+            await ApartmentState.SaveAsync(room.Name, room.RewardThreshold, room.ResetSchedule);
+        }
+    }
+
+    private async Task CreateNewRoom()
+    {
+        if (string.IsNullOrWhiteSpace(newRoomNameInput) || UserSession.CurrentUser == null) return;
+
+        var newApt = await UsersClient.CreateApartmentAsync(UserSession.CurrentUser.Id, newRoomNameInput.Trim());
+        if (newApt != null)
+        {
+            await LoadUserApartments();
+            await SwitchRoom(newApt.Id);
+        }
+        CloseCreateRoomModal();
+    }
+    private async Task CalculateUserPoints()
+    {
+        if (UserSession.CurrentUser != null)
+        {
+            try
+            {
+                var chores = await ChoresClient.GetChoresAsync();
+                userPoints = chores
+                    .Where(c => c.UserId == UserSession.CurrentUser.Id && c.Status == "Done")
+                    .Sum(c => c.Points);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Hiba a pontszám kiszámításakor: {ex.Message}");
+            }
+        }
+    }
+
+    private void ToggleProfileMenu() => isProfileMenuOpen = !isProfileMenuOpen;
+    private void OpenCreateRoomModal() { isProfileMenuOpen = false; showCreateRoomModal = true; }
+    private void CloseCreateRoomModal() { showCreateRoomModal = false; newRoomNameInput = string.Empty; }
+
+    private void Logout()
+    {
+        isProfileMenuOpen = false;
+        UserSession.Logout();
+        Navigation.NavigateTo("/login");
+    }
+
+    public void Dispose()
+    {
+        ApartmentState.OnChange -= StateHasChanged;
+        UserSession.OnChange -= StateHasChanged;
+    }
+}

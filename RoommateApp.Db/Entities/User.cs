@@ -10,6 +10,8 @@ namespace RoommateApp.Db.Entities
         public string Name { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
-        public bool IsAdmin { get; set; } = false;
+
+        // Csak ez a gyűjtemény maradjon!
+        public ICollection<UserApartment> UserApartments { get; set; } = new List<UserApartment>();
     }
 }

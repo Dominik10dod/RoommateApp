@@ -29,6 +29,10 @@ namespace RoommateApp.Db.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("InviteCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -48,6 +52,7 @@ namespace RoommateApp.Db.Migrations
                         new
                         {
                             Id = 1,
+                            InviteCode = "",
                             Name = "Apartment 4B",
                             ResetSchedule = "Sunday 12:00 AM",
                             RewardThreshold = 5000
@@ -225,9 +230,6 @@ namespace RoommateApp.Db.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("IsAdmin")
-                        .HasColumnType("bit");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -245,7 +247,6 @@ namespace RoommateApp.Db.Migrations
                         {
                             Id = 1,
                             Email = "peter@roommate.hu",
-                            IsAdmin = false,
                             Name = "Kovács Péter",
                             Password = ""
                         },
@@ -253,7 +254,6 @@ namespace RoommateApp.Db.Migrations
                         {
                             Id = 2,
                             Email = "anna@roommate.hu",
-                            IsAdmin = false,
                             Name = "Tóth Anna",
                             Password = ""
                         },
@@ -261,10 +261,27 @@ namespace RoommateApp.Db.Migrations
                         {
                             Id = 3,
                             Email = "mate@roommate.hu",
-                            IsAdmin = false,
                             Name = "Szabó Máté",
                             Password = ""
                         });
+                });
+
+            modelBuilder.Entity("RoommateApp.Db.Entities.UserApartment", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ApartmentId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsAdmin")
+                        .HasColumnType("bit");
+
+                    b.HasKey("UserId", "ApartmentId");
+
+                    b.HasIndex("ApartmentId");
+
+                    b.ToTable("UserApartments");
                 });
 
             modelBuilder.Entity("RoommateApp.Db.Entities.Chore", b =>
@@ -276,6 +293,35 @@ namespace RoommateApp.Db.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("RoommateApp.Db.Entities.UserApartment", b =>
+                {
+                    b.HasOne("RoommateApp.Db.Entities.Apartment", "Apartment")
+                        .WithMany("UserApartments")
+                        .HasForeignKey("ApartmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RoommateApp.Db.Entities.User", "User")
+                        .WithMany("UserApartments")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Apartment");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("RoommateApp.Db.Entities.Apartment", b =>
+                {
+                    b.Navigation("UserApartments");
+                });
+
+            modelBuilder.Entity("RoommateApp.Db.Entities.User", b =>
+                {
+                    b.Navigation("UserApartments");
                 });
 #pragma warning restore 612, 618
         }

@@ -6,10 +6,11 @@ namespace RoommateApp.Web.Client.Services
     {
         private readonly ApartmentClient _apartmentClient;
 
-        public int Id { get; private set; } = 1;
-        public string ApartmentName { get; private set; } = "Apartment 4B";
+        public int Id { get; private set; }
+        public string ApartmentName { get; private set; } = "Nincs szoba kiválasztva";
         public int RewardThreshold { get; private set; } = 5000;
         public string ResetSchedule { get; private set; } = "Sunday 12:00 AM";
+        public string InviteCode { get; private set; } = string.Empty;
 
         public event Action? OnChange;
 
@@ -18,7 +19,8 @@ namespace RoommateApp.Web.Client.Services
             _apartmentClient = apartmentClient;
         }
 
-        public async Task LoadAsync()
+        // Betöltés a belépett felhasználó szobaazonosítója alapján
+        public async Task LoadAsync(int? targetApartmentId = null)
         {
             try
             {
@@ -29,6 +31,7 @@ namespace RoommateApp.Web.Client.Services
                     ApartmentName = apt.Name;
                     RewardThreshold = apt.RewardThreshold;
                     ResetSchedule = apt.ResetSchedule;
+                    InviteCode = apt.InviteCode ?? string.Empty;
                     NotifyStateChanged();
                 }
             }
@@ -45,7 +48,8 @@ namespace RoommateApp.Web.Client.Services
                 Id = Id,
                 Name = name,
                 RewardThreshold = threshold,
-                ResetSchedule = schedule
+                ResetSchedule = schedule,
+                InviteCode = InviteCode
             });
 
             if (updated != null)
@@ -53,6 +57,7 @@ namespace RoommateApp.Web.Client.Services
                 ApartmentName = updated.Name;
                 RewardThreshold = updated.RewardThreshold;
                 ResetSchedule = updated.ResetSchedule;
+                InviteCode = updated.InviteCode ?? InviteCode;
                 NotifyStateChanged();
             }
         }

@@ -3,51 +3,18 @@
 @using Radzen.Blazor
 @using RoommateApp.Web.Client
 @using RoommateApp.Web.Client.Services
+@using RoommateApp.Web.Client.Components
 @implements IDisposable
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject ChoresClient ChoresClient
 @inject UsersClient UsersClient
 @inject ApartmentStateService ApartmentState
+@inject UserSessionService UserSession
 @inject NavigationManager Navigation
 
 <div class="p-3 p-md-4 bg-light min-vh-100">
-    <!-- Top Header / Navbar -->
-    <div class="card border-0 shadow-sm rounded-4 mb-4 p-3 bg-white">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-            <div class="d-flex align-items-center gap-3">
-                <div class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
-                    <RadzenIcon Icon="check_box" Style="font-size: 1.5rem;" />
-                </div>
-                <div>
-                    <h1 class="h5 fw-bold m-0 text-dark">ChoreBoard</h1>
-                    <span class="text-muted small">@ApartmentState.ApartmentName</span>
-                </div>
-            </div>
-
-            <div class="bg-light p-1 rounded-pill d-none d-md-flex gap-1">
-                <button class="btn btn-light btn-sm rounded-pill px-3 text-secondary border-0" @onclick='() => Navigation.NavigateTo("/")'>Roommate Board</button>
-                <button class="btn btn-light btn-sm rounded-pill px-3 text-secondary border-0">Stats & Analytics</button>
-                <button class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">Controls</button>
-            </div>
-
-            <div class="d-flex align-items-center gap-3">
-                <button class="btn btn-sm btn-outline-secondary rounded-pill extra-small" @onclick="ToggleAdminMode">
-                    Váltás: @(isAdmin ? "Member Nézetre" : "Admin Nézetre")
-                </button>
-
-                @if (isAdmin)
-                {
-                    <span class="badge border border-danger-subtle text-danger bg-danger-subtle px-2 py-1 rounded-pill extra-small fw-bold">ADMIN MODE</span>
-                }
-
-                <div class="d-flex align-items-center gap-2 px-3 py-1 rounded-pill" style="background-color: #e0e7ff; color: #4338ca;">
-                    <RadzenIcon Icon="emoji_events" Style="font-size: 1.2rem; color: #4338ca;" />
-                    <span class="fw-bold small">1,240 pts</span>
-                </div>
-                <RadzenAvatar Image="https://i.pravatar.cc/150?img=32" Size="AvatarSize.Medium" class="rounded-circle" />
-            </div>
-        </div>
-    </div>
+    <!-- Egységes Fejléc Komponens -->
+    <AppHeader ActivePage="Controls" />
 
     <!-- Title Section -->
     <div class="mb-4">
@@ -65,19 +32,21 @@
     }
     else
     {
-        <!-- STABIL KÉT-OSZLOPO S GRIDEKKEL NEM CSÚSZIK EL A MÁSODIK OSZLOP -->
+        <!-- STABIL KÉT-OSZLOPO S GRID -->
         <div class="row g-4">
-            
+
             <!-- BAL OSZLOP (Roommates & Roles + My Chore History) -->
             <div class="col-lg-6 d-flex flex-column gap-4">
-                
+
                 <!-- 1. Roommates & Roles -->
                 <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="fw-bold text-dark m-0">Roommates & Roles</h5>
                         @if (isAdmin)
                         {
-                            <button class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold extra-small">+ Invite</button>
+                            <button class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold extra-small" @onclick="OpenInviteModal">
+                                + Invite
+                            </button>
                         }
                         else
                         {
@@ -86,24 +55,33 @@
                     </div>
 
                     <div class="d-flex flex-column gap-2">
-                        @foreach (var roommate in roommates)
+                        @if (!roommates.Any())
                         {
-                            <div class="d-flex justify-content-between align-items-center p-2 rounded-3 border-bottom">
-                                <div class="d-flex align-items-center gap-3">
-                                    <RadzenAvatar Image="@roommate.AvatarUrl" Size="AvatarSize.Medium" class="rounded-circle" />
-                                    <div>
-                                        <div class="fw-bold text-dark small">@roommate.Name @(roommate.IsCurrent ? "(You)" : "")</div>
-                                        <div class="text-muted extra-small">@roommate.Role</div>
+                            <p class="text-muted small m-0">Nincsenek még regisztrált lakótársak.</p>
+                        }
+                        else
+                        {
+                            @foreach (var roommate in roommates)
+                            {
+                                <div class="d-flex justify-content-between align-items-center p-2 rounded-3 border-bottom">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <img src="@roommate.AvatarUrl" class="rounded-circle" style="width: 36px; height: 36px; object-fit: cover;" alt="@roommate.Name" />
+                                        <div>
+                                            <div class="fw-bold text-dark small">@roommate.Name @(roommate.IsCurrent ? "(You)" : "")</div>
+                                            <div class="text-muted extra-small">@roommate.Role</div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <span class="fw-bold text-dark small">@roommate.Points.ToString("N0") pts</span>
+                                        @if (isAdmin && !roommate.IsCurrent)
+                                        {
+                                            <button class="btn btn-outline-danger btn-sm rounded-2 extra-small px-2 py-1" @onclick="() => RemoveRoommate(roommate.Id)">
+                                                Remove
+                                            </button>
+                                        }
                                     </div>
                                 </div>
-                                <div class="d-flex align-items-center gap-3">
-                                    <span class="fw-bold text-dark small">@roommate.Points.ToString("N0") pts</span>
-                                    @if (isAdmin && !roommate.IsCurrent)
-                                    {
-                                        <button class="btn btn-outline-danger btn-sm rounded-2 extra-small px-2 py-1">Remove</button>
-                                    }
-                                </div>
-                            </div>
+                            }
                         }
                     </div>
                 </div>
@@ -146,6 +124,11 @@
                 {
                     <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
                         <h5 class="fw-bold text-dark mb-3">Apartment Settings</h5>
+
+                        @if (!string.IsNullOrEmpty(settingSuccessMessage))
+                        {
+                            <div class="alert alert-success py-2 extra-small mb-3">@settingSuccessMessage</div>
+                        }
 
                         <div class="d-flex flex-column gap-3">
                             <div>
@@ -202,7 +185,6 @@
                             }
                         </div>
 
-                        <!-- ÚJ: HATÁRIDŐ MEZŐ -->
                         <div>
                             <label class="form-label extra-small fw-bold text-secondary mb-1">Due Date</label>
                             <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle" placeholder="e.g., Today, Tomorrow, Oct 30" @bind="newChoreDueDate" />
@@ -228,6 +210,46 @@
     }
 </div>
 
+<!-- Meghívó Link Modál (Dinamikus adatokkal) -->
+@if (showInviteModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 p-4 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bg-primary-subtle p-2 rounded-3 text-primary">
+                            <RadzenIcon Icon="person_add" Style="font-size: 1.3rem;" />
+                        </div>
+                        <h5 class="fw-bold text-dark m-0">Invite Roommates</h5>
+                    </div>
+                    <button type="button" class="btn-close" @onclick="() => showInviteModal = false"></button>
+                </div>
+
+                <p class="text-muted extra-small mb-3">
+                    Share this unique invite link with your roommates. Anyone with the link or code can join <strong>@aptName</strong>.
+                </p>
+
+                <div class="mb-3">
+                    <label class="form-label extra-small fw-bold text-secondary mb-1">Invite Link</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control rounded-start-3 py-2 px-3 border-light-subtle extra-small"
+                               value="@inviteUrl" readonly />
+                        <button class="btn btn-primary px-3 extra-small fw-bold" style="background-color: #6366f1; border: none;" @onclick="CopyInviteLink">
+                            @(isCopied ? "Copied! ✓" : "Copy Link")
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-3 rounded-3 bg-light d-flex justify-content-between align-items-center">
+                    <span class="text-muted extra-small font-monospace">Room Code: <strong>@ApartmentState.InviteCode</strong></span>
+                    <span class="badge bg-success-subtle text-success extra-small fw-bold">Active</span>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private bool isLoading = true;
     private bool isSaving = false;
@@ -237,18 +259,25 @@
     private int rewardThreshold = 5000;
     private string resetSchedule = string.Empty;
 
-    // Chore adatok
-    private List<string> categories = new();
+    // Chore form
+    private List<string> categories = new() { "CLEANING", "MAINTENANCE", "SHOPPING" };
     private string selectedCategory = "CLEANING";
     private string customCategoryName = string.Empty;
     private bool isCustomCategory = false;
 
     private string newChoreName = string.Empty;
-    private string newChoreDueDate = "Today"; 
+    private string newChoreDueDate = "Today";
     private int newChorePoints = 15;
 
     private bool isSubmittingChore = false;
     private string choreSuccessMessage = string.Empty;
+    private string settingSuccessMessage = string.Empty;
+
+    // Invite Modal state
+    private bool showInviteModal = false;
+    private bool isCopied = false;
+    private string inviteCode = "APT4B-8X92";
+    private string inviteUrl => $"{Navigation.BaseUri}join?code={ApartmentState.InviteCode}";
 
     public class RoommateModel
     {
@@ -274,6 +303,7 @@
     protected override async Task OnInitializedAsync()
     {
         ApartmentState.OnChange += StateHasChanged;
+        UserSession.OnChange += StateHasChanged;
 
         try
         {
@@ -283,41 +313,49 @@
             resetSchedule = ApartmentState.ResetSchedule;
 
             var catList = await ChoresClient.GetCategoriesAsync();
-            categories = catList.ToList();
-            if (categories.Any()) selectedCategory = categories.First();
-
-            var users = await UsersClient.GetUsersAsync();
-            var chores = await ChoresClient.GetChoresAsync();
-
-            roommates = users.Select(u => new RoommateModel
+            if (catList != null && catList.Any())
             {
-                Id = u.Id,
-                Name = u.Name,
-                Role = u.IsAdmin ? "Admin" : "Member",
-                IsCurrent = u.IsAdmin,
-                Points = chores.Where(c => c.UserId == u.Id && c.Status == "Done").Sum(c => c.Points),
-                AvatarUrl = $"https://i.pravatar.cc/150?img={u.Id + 10}"
-            }).ToList();
-
-            var currentAdminUser = users.FirstOrDefault(u => u.IsAdmin);
-            if (currentAdminUser != null)
-            {
-                myHistory = chores
-                    .Where(c => c.Status == "Done" && c.UserId == currentAdminUser.Id)
-                    .Select(c => new HistoryModel
-                    {
-                        Title = c.Title,
-                        Category = c.Category,
-                        DateText = c.DueDateText,
-                        Points = c.Points
-                    }).ToList();
+                categories = catList.ToList();
+                selectedCategory = categories.First();
             }
 
-            isAdmin = users.Any(u => u.IsAdmin);
+            var users = await UsersClient.GetUsersByApartmentAsync(ApartmentState.Id);
+            var chores = await ChoresClient.GetChoresAsync();
+
+            if (users != null)
+            {
+                int currentUserId = UserSession.CurrentUser?.Id ?? 0;
+
+                // Csak azok a lakótársak jelennek meg, akik az aktuális szobához tartoznak
+                roommates = users.Select(u => new RoommateModel
+                {
+                    Id = u.Id,
+                    Name = u.Name,
+                    Role = u.IsAdmin ? "Admin" : "Member",
+                    IsCurrent = u.Id == currentUserId,
+                    Points = chores != null ? chores.Where(c => c.UserId == u.Id && c.Status == "Done").Sum(c => c.Points) : 0,
+                    AvatarUrl = $"https://i.pravatar.cc/150?img={u.Id + 10}"
+                }).ToList();
+
+                if (currentUserId > 0 && chores != null)
+                {
+                    myHistory = chores
+                        .Where(c => c.Status == "Done" && c.UserId == currentUserId)
+                        .Select(c => new HistoryModel
+                        {
+                            Title = c.Title,
+                            Category = c.Category,
+                            DateText = c.DueDateText,
+                            Points = c.Points
+                        }).ToList();
+                }
+
+                isAdmin = UserSession.CurrentUser?.IsAdmin ?? users.Any(u => u.IsAdmin);
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading data: {ex.Message}");
+            Console.WriteLine($"Hiba az adatok betöltésekor: {ex.Message}");
         }
         finally
         {
@@ -341,10 +379,18 @@
 
     private async Task SaveSettings()
     {
+        if (isSaving) return;
         isSaving = true;
+        settingSuccessMessage = string.Empty;
+
         try
         {
             await ApartmentState.SaveAsync(aptName, rewardThreshold, resetSchedule);
+            settingSuccessMessage = "A szoba beállításai sikeresen elmentve az adatbázisba!";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Hiba a beállítások mentésekor: {ex.Message}");
         }
         finally
         {
@@ -374,17 +420,17 @@
             });
 
             var updatedCats = await ChoresClient.GetCategoriesAsync();
-            categories = updatedCats.ToList();
+            if (updatedCats != null) categories = updatedCats.ToList();
 
             newChoreName = string.Empty;
             customCategoryName = string.Empty;
             newChoreDueDate = "Today";
             isCustomCategory = false;
-            choreSuccessMessage = "New chore created successfully!";
+            choreSuccessMessage = "Új feladat elmentve az adatbázisba és hozzáadva a To Do oszlophoz!";
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error creating new chore: {ex.Message}");
+            Console.WriteLine($"Hiba a feladat létrehozásakor: {ex.Message}");
         }
         finally
         {
@@ -392,14 +438,41 @@
         }
     }
 
-    private void ToggleAdminMode() => isAdmin = !isAdmin;
+    private void OpenInviteModal()
+    {
+        isCopied = false;
+        showInviteModal = true;
+    }
+
+    private async Task CopyInviteLink()
+    {
+        isCopied = true;
+        await Task.Delay(3000);
+        isCopied = false;
+    }
+
+    private async Task RemoveRoommate(int userId)
+    {
+        try
+        {
+            await UsersClient.RemoveFromApartmentAsync(userId, ApartmentState.Id);
+            roommates.RemoveAll(r => r.Id == userId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Hiba a felhasználó eltávolításakor: {ex.Message}");
+        }
+    }
 
     public void Dispose()
     {
         ApartmentState.OnChange -= StateHasChanged;
+        UserSession.OnChange -= StateHasChanged;
     }
 }
 
 <style>
-    .extra-small { font-size: 0.75rem; }
+    .extra-small {
+        font-size: 0.75rem;
+    }
 </style>
