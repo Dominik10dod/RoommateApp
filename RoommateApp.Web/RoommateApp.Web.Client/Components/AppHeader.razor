@@ -127,7 +127,7 @@
                 <div class="modal-footer border-0 pt-0">
                     <button class="btn btn-light btn-sm rounded-pill px-3 extra-small" @onclick="CloseCreateRoomModal">Mégse</button>
                     <button class="btn btn-primary btn-sm rounded-pill px-4 extra-small fw-bold"
-                            style="background-color: #6366f1; border: none;" @onclick="OpenCreateRoomModal">
+                            style="background-color: #6366f1; border: none;" @onclick="CreateNewRoom">
                         Létrehozás
                     </button>
                 </div>
@@ -146,8 +146,8 @@
     private int userPoints = 0;
 
     private string AvatarUrl => UserSession.CurrentUser != null
-        ? $"https://i.pravatar.cc/150?img={UserSession.CurrentUser.Id + 10}"
-        : "https://i.pravatar.cc/150?img=32";
+    ? $"https://api.dicebear.com/7.x/identicon/svg?seed={UserSession.CurrentUser.Id}"
+    : "https://api.dicebear.com/7.x/identicon/svg?seed=default";
 
     private List<ApartmentDto> myRooms = new();
 
@@ -157,56 +157,85 @@
         UserSession.OnChange += StateHasChanged;
 
         await LoadUserApartments();
+        await CalculateUserPoints(); // Pontszám kiszámítása indításkor
     }
 
     private async Task LoadUserApartments()
-{
-    if (UserSession.CurrentUser != null)
     {
-        var rooms = await UsersClient.GetUserApartmentsAsync(UserSession.CurrentUser.Id);
-        if (rooms != null)
+        int currentUserId = UserSession.CurrentUser?.Id ?? 1;
+
+        try
         {
-            myRooms = rooms.ToList();
-            if (myRooms.Any() && ApartmentState.Id == 0)
+            var rooms = await UsersClient.GetUserApartmentsAsync(currentUserId);
+            if (rooms != null && rooms.Any())
             {
-                await SwitchRoom(myRooms.First().Id);
+                myRooms = rooms.ToList();
+
+                // Ha még nincs kiválasztva szoba, az elsőt töltjük be
+                if (ApartmentState.Id == 0)
+                {
+                    var activeRoom = myRooms.First();
+                    await ApartmentState.LoadAsync(activeRoom.Id);
+                }
             }
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Hiba a szobák betöltésekor: {ex.Message}");
+        }
     }
-}
 
+    private async Task CreateNewRoom()
+    {
+        if (string.IsNullOrWhiteSpace(newRoomNameInput)) return;
+
+        int userId = UserSession.CurrentUser?.Id ?? 1;
+
+        try
+        {
+            var newApt = await UsersClient.CreateApartmentAsync(userId, newRoomNameInput.Trim());
+            if (newApt != null)
+            {
+                await LoadUserApartments();
+                await ApartmentState.LoadAsync(newApt.Id);
+            }
+
+            CloseCreateRoomModal();
+            Navigation.NavigateTo("/", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Hiba a szoba létrehozásakor: {ex.Message}");
+        }
+    }
+
+    // JAVÍTVA: Nem írja felül az adatbázist, hanem betölti az új szobát
     private async Task SwitchRoom(int roomId)
     {
         isProfileMenuOpen = false;
         var room = myRooms.FirstOrDefault(r => r.Id == roomId);
         if (room != null)
         {
-            await ApartmentState.SaveAsync(room.Name, room.RewardThreshold, room.ResetSchedule);
+            await ApartmentState.LoadAsync(room.Id);
+            await CalculateUserPoints();
+            Navigation.NavigateTo("/", forceLoad: true); // Oldal újratöltése az új szoba adataival
         }
     }
 
-    private async Task CreateNewRoom()
-    {
-        if (string.IsNullOrWhiteSpace(newRoomNameInput) || UserSession.CurrentUser == null) return;
-
-        var newApt = await UsersClient.CreateApartmentAsync(UserSession.CurrentUser.Id, newRoomNameInput.Trim());
-        if (newApt != null)
-        {
-            await LoadUserApartments();
-            await SwitchRoom(newApt.Id);
-        }
-        CloseCreateRoomModal();
-    }
     private async Task CalculateUserPoints()
     {
         if (UserSession.CurrentUser != null)
         {
             try
             {
-                var chores = await ChoresClient.GetChoresAsync();
-                userPoints = chores
-                    .Where(c => c.UserId == UserSession.CurrentUser.Id && c.Status == "Done")
-                    .Sum(c => c.Points);
+                // JAVÍTVA: GetChoresByApartmentAsync hívása a szoba azonosítójával
+                var chores = await ChoresClient.GetChoresByApartmentAsync(ApartmentState.Id);
+                if (chores != null)
+                {
+                    userPoints = chores
+                        .Where(c => c.UserId == UserSession.CurrentUser.Id && c.Status == "Done")
+                        .Sum(c => c.Points);
+                }
             }
             catch (Exception ex)
             {

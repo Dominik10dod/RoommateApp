@@ -210,7 +210,7 @@
     }
 </div>
 
-<!-- Meghívó Link Modál (Dinamikus adatokkal) -->
+<!-- Meghívó Link Modál -->
 @if (showInviteModal)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
@@ -253,7 +253,7 @@
 @code {
     private bool isLoading = true;
     private bool isSaving = false;
-    private bool isAdmin = true;
+    private bool isAdmin = false;
 
     private string aptName = string.Empty;
     private int rewardThreshold = 5000;
@@ -276,7 +276,6 @@
     // Invite Modal state
     private bool showInviteModal = false;
     private bool isCopied = false;
-    private string inviteCode = "APT4B-8X92";
     private string inviteUrl => $"{Navigation.BaseUri}join?code={ApartmentState.InviteCode}";
 
     public class RoommateModel
@@ -302,6 +301,12 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!UserSession.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
         ApartmentState.OnChange += StateHasChanged;
         UserSession.OnChange += StateHasChanged;
 
@@ -320,13 +325,16 @@
             }
 
             var users = await UsersClient.GetUsersByApartmentAsync(ApartmentState.Id);
-            var chores = await ChoresClient.GetChoresAsync();
+            var chores = await ChoresClient.GetChoresByApartmentAsync(ApartmentState.Id);
 
             if (users != null)
             {
                 int currentUserId = UserSession.CurrentUser?.Id ?? 0;
 
-                // Csak azok a lakótársak jelennek meg, akik az aktuális szobához tartoznak
+                // Szobán belüli pontos Admin jogosultság ellenőrzése
+                var currentUserInRoom = users.FirstOrDefault(u => u.Id == currentUserId);
+                isAdmin = currentUserInRoom?.IsAdmin ?? false;
+
                 roommates = users.Select(u => new RoommateModel
                 {
                     Id = u.Id,
@@ -334,7 +342,7 @@
                     Role = u.IsAdmin ? "Admin" : "Member",
                     IsCurrent = u.Id == currentUserId,
                     Points = chores != null ? chores.Where(c => c.UserId == u.Id && c.Status == "Done").Sum(c => c.Points) : 0,
-                    AvatarUrl = $"https://i.pravatar.cc/150?img={u.Id + 10}"
+                    AvatarUrl = $"https://api.dicebear.com/7.x/identicon/svg?seed={u.Id}"
                 }).ToList();
 
                 if (currentUserId > 0 && chores != null)
@@ -349,8 +357,6 @@
                             Points = c.Points
                         }).ToList();
                 }
-
-                isAdmin = UserSession.CurrentUser?.IsAdmin ?? users.Any(u => u.IsAdmin);
             }
         }
         catch (Exception ex)
@@ -410,13 +416,15 @@
             string categoryToUse = isCustomCategory ? customCategoryName.Trim() : selectedCategory;
             if (string.IsNullOrWhiteSpace(categoryToUse)) categoryToUse = "CLEANING";
 
+            int currentUserId = UserSession.CurrentUser?.Id ?? 1;
+
             await ChoresClient.CreateChoreAsync(new CreateChoreDto
             {
                 Title = newChoreName,
                 Category = categoryToUse,
                 Points = newChorePoints,
                 DueDateText = string.IsNullOrWhiteSpace(newChoreDueDate) ? "Today" : newChoreDueDate,
-                UserId = roommates.FirstOrDefault(r => r.IsCurrent)?.Id ?? 1
+                UserId = currentUserId
             });
 
             var updatedCats = await ChoresClient.GetCategoriesAsync();

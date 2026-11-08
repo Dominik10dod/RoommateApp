@@ -2,25 +2,20 @@
 @using Radzen
 @using Radzen.Blazor
 @using RoommateApp.Web.Client
+@using RoommateApp.Web.Client.Services
 @using System.Globalization
 @using Microsoft.AspNetCore.Components.Web
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject ChoresClient ChoresClient
 @inject UsersClient UsersClient
 @inject NavigationManager Navigation
-@using RoommateApp.Web.Client.Services
 @inject ApartmentStateService ApartmentState
-@using RoommateApp.Web.Client.Services
 @inject UserSessionService UserSession
 @implements IDisposable
 
 <div class="p-3 p-md-4">
-    <div class="p-3 p-md-4">
-        <!-- Egységes Fejléc Komponens -->
-        <AppHeader ActivePage="Board" />
-
-        <!-- Subheader Section... -->
-    </div>
+    <!-- Egységes Fejléc Komponens -->
+    <AppHeader ActivePage="Board" />
 
     <!-- Subheader Section -->
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
@@ -64,7 +59,7 @@
                             <RadzenIcon Icon="add" Style="cursor: pointer; color: #64748b;" />
                         </div>
 
-                        <!-- Drop Zone: ToDo (flex-grow-1 hozzáadva) -->
+                        <!-- Drop Zone: ToDo -->
                         <div class="d-flex flex-column gap-3 drop-zone p-2 rounded-3 flex-grow-1"
                              @ondragover:preventDefault
                              @ondrop='() => HandleDrop("ToDo")'>
@@ -85,7 +80,7 @@
                             <RadzenIcon Icon="add" Style="cursor: pointer; color: #64748b;" />
                         </div>
 
-                        <!-- Drop Zone: InProgress (flex-grow-1 hozzáadva) -->
+                        <!-- Drop Zone: InProgress -->
                         <div class="d-flex flex-column gap-3 drop-zone p-2 rounded-3 flex-grow-1"
                              @ondragover:preventDefault
                              @ondrop='() => HandleDrop("InProgress")'>
@@ -106,7 +101,7 @@
                             <RadzenIcon Icon="add" Style="cursor: pointer; color: #64748b;" />
                         </div>
 
-                        <!-- Drop Zone: Done (flex-grow-1 hozzáadva) -->
+                        <!-- Drop Zone: Done -->
                         <div class="d-flex flex-column gap-3 drop-zone p-2 rounded-3 flex-grow-1"
                              @ondragover:preventDefault
                              @ondrop='() => HandleDrop("Done")'>
@@ -240,10 +235,7 @@
         public string AvatarUrl { get; set; } = string.Empty;
     }
 
-    private void TogglePanel()
-    {
-        isPanelHidden = !isPanelHidden;
-    }
+    private void TogglePanel() => isPanelHidden = !isPanelHidden;
 
     protected override async Task OnInitializedAsync()
     {
@@ -260,7 +252,7 @@
         {
             await ApartmentState.LoadAsync();
 
-            var chores = await ChoresClient.GetChoresAsync();
+            var chores = await ChoresClient.GetChoresByApartmentAsync(ApartmentState.Id);
             var users = await UsersClient.GetUsersByApartmentAsync(ApartmentState.Id);
 
             allChores = chores.ToList();
@@ -281,6 +273,7 @@
     public void Dispose()
     {
         ApartmentState.OnChange -= StateHasChanged;
+        UserSession.OnChange -= StateHasChanged;
     }
 
     private void HandleDragStart(ChoreDto chore)
@@ -294,7 +287,7 @@
         {
             draggedChore.Status = targetStatus;
 
-            // Ha a "Done" oszlopba került, az áthúzó személy kapja meg a feladatot
+            // Ha a "Done" oszlopba kerül, a bejelentkezett felhasználó kapja a pontot
             if (targetStatus == "Done")
             {
                 if (!draggedChore.DueDateText.StartsWith("Done"))
@@ -303,19 +296,19 @@
                     draggedChore.DueDateText = $"Done · {todayStr}";
                 }
 
-                var activeUser = allUsers.FirstOrDefault(u => u.IsAdmin) ?? allUsers.FirstOrDefault();
+                int currentUserId = UserSession.CurrentUser?.Id ?? 1;
+                var activeUser = allUsers.FirstOrDefault(u => u.Id == currentUserId) ?? allUsers.FirstOrDefault();
+
                 if (activeUser != null)
                 {
                     draggedChore.UserId = activeUser.Id;
                     draggedChore.UserName = activeUser.Name;
-                    draggedChore.UserAvatarUrl = $"https://i.pravatar.cc/150?img={activeUser.Id + 10}";
+                    draggedChore.UserAvatarUrl = $"https://api.dicebear.com/7.x/identicon/svg?seed={activeUser.Id}";
                 }
             }
 
-            // Felület és Leaderboard azonnali frissítése
             RefreshBoardAndLeaderboard();
 
-            // REST API HÍVÁS: Végleges elmentés az SQL Server adatbázisba
             try
             {
                 await ChoresClient.UpdateChoreAsync(draggedChore.Id, new UpdateChoreDto
@@ -352,7 +345,7 @@
                 UserId = u.Id,
                 Name = u.Name,
                 Points = userPoints,
-                AvatarUrl = $"https://i.pravatar.cc/150?img={u.Id + 10}"
+                AvatarUrl = $"https://api.dicebear.com/7.x/identicon/svg?seed={u.Id}"
             };
         })
         .OrderByDescending(u => u.Points)
@@ -411,23 +404,23 @@
         transition: background-color 0.2s ease;
     }
 
-        .drop-zone:hover {
-            background-color: rgba(241, 245, 249, 0.6); 
-            border-radius: 12px;
-        }
+    .drop-zone:hover {
+        background-color: rgba(241, 245, 249, 0.6); 
+        border-radius: 12px;
+    }
 
     .task-card {
         cursor: grab;
         transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
 
-        .task-card:active {
-            cursor: grabbing;
-            opacity: 0.6;
-        }
+    .task-card:active {
+        cursor: grabbing;
+        opacity: 0.6;
+    }
 
-        .task-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 .5rem 1rem rgba(0,0,0,.08) !important;
-        }
+    .task-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.08) !important;
+    }
 </style>

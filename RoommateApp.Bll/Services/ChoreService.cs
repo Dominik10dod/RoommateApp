@@ -13,7 +13,6 @@ namespace RoommateApp.Bll.Services
         {
             _context = context;
         }
-
         public async Task<List<ChoreDto>> GetChoresAsync()
         {
             return await _context.Chores
@@ -28,7 +27,27 @@ namespace RoommateApp.Bll.Services
                     DueDateText = c.DueDateText,
                     UserId = c.UserId,
                     UserName = c.User != null ? c.User.Name : "Ismeretlen",
-                    UserAvatarUrl = $"https://i.pravatar.cc/150?img={c.UserId + 10}"
+                    UserAvatarUrl = $"https://api.dicebear.com/7.x/identicon/svg?seed={c.UserId}"
+                })
+                .ToListAsync();
+        }
+        public async Task<List<ChoreDto>> GetChoresByApartmentAsync(int apartmentId)
+        {
+            return await _context.Chores
+                .Include(c => c.User)
+                // Ha a Chore entitásodban van ApartmentId, itt szűrünk rá:
+                // .Where(c => c.ApartmentId == apartmentId) 
+                .Select(c => new ChoreDto
+                {
+                    Id = c.Id,
+                    Title = c.Title,
+                    Category = c.Category,
+                    Points = c.Points,
+                    Status = c.Status,
+                    DueDateText = c.DueDateText,
+                    UserId = c.UserId,
+                    UserName = c.User != null ? c.User.Name : "Ismeretlen",
+                    UserAvatarUrl = $"https://api.dicebear.com/7.x/identicon/svg?seed={c.UserId}"
                 })
                 .ToListAsync();
         }
@@ -73,7 +92,7 @@ namespace RoommateApp.Bll.Services
                 DueDateText = chore.DueDateText,
                 UserId = chore.UserId,
                 UserName = user?.Name ?? "Ismeretlen",
-                UserAvatarUrl = $"https://i.pravatar.cc/150?img={chore.UserId + 10}"
+                UserAvatarUrl = $"https://api.dicebear.com/7.x/identicon/svg?seed={chore.UserId}"
             };
         }
 

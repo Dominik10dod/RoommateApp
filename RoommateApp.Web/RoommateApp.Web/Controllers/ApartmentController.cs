@@ -15,10 +15,12 @@ namespace RoommateApp.Web.Controllers
             _apartmentService = apartmentService;
         }
 
-        [HttpGet]
-        public async Task<ActionResult<ApartmentDto>> GetApartment()
+        // Szoba lekérése ID alapján
+        [HttpGet("{id}")]
+        public async Task<ActionResult<ApartmentDto>> GetApartment(int id)
         {
-            var apt = await _apartmentService.GetApartmentAsync();
+            var apt = await _apartmentService.GetApartmentByIdAsync(id);
+            if (apt == null) return NotFound();
             return Ok(apt);
         }
 
@@ -26,6 +28,7 @@ namespace RoommateApp.Web.Controllers
         public async Task<ActionResult<ApartmentDto>> UpdateApartment([FromBody] ApartmentDto dto)
         {
             var updated = await _apartmentService.UpdateApartmentAsync(dto);
+            if (updated == null) return NotFound();
             return Ok(updated);
         }
     }

@@ -57,7 +57,14 @@
     {
         try
         {
-            var users = await UsersClient.GetUsersByApartmentAsync(ApartmentState.Id);
+            // Ha még nem volt betöltve szoba, betöltjük az alapértelmezettet
+            if (ApartmentState.Id == 0)
+            {
+                await ApartmentState.LoadAsync();
+            }
+
+            // JAVÍTVA: Közvetlenül az osztály mezőjének adjuk át az API eredményét (nincs 'var')
+            users = await UsersClient.GetUsersByApartmentAsync(ApartmentState.Id);
         }
         catch (Exception ex)
         {

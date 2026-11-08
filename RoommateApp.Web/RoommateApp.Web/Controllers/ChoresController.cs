@@ -15,10 +15,11 @@ namespace RoommateApp.Web.Controllers
             _choreService = choreService;
         }
 
-        [HttpGet]
-        public async Task<ActionResult<List<ChoreDto>>> GetChores()
+        // Adott szoba feladatainak lekérése
+        [HttpGet("apartment/{apartmentId}")]
+        public async Task<ActionResult<List<ChoreDto>>> GetChoresByApartment(int apartmentId)
         {
-            var chores = await _choreService.GetChoresAsync();
+            var chores = await _choreService.GetChoresByApartmentAsync(apartmentId);
             return Ok(chores);
         }
 

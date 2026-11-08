@@ -282,6 +282,26 @@ namespace RoommateApp.Db.Migrations
                     b.HasIndex("ApartmentId");
 
                     b.ToTable("UserApartments");
+
+                    b.HasData(
+                        new
+                        {
+                            UserId = 1,
+                            ApartmentId = 1,
+                            IsAdmin = true
+                        },
+                        new
+                        {
+                            UserId = 2,
+                            ApartmentId = 1,
+                            IsAdmin = false
+                        },
+                        new
+                        {
+                            UserId = 3,
+                            ApartmentId = 1,
+                            IsAdmin = false
+                        });
                 });
 
             modelBuilder.Entity("RoommateApp.Db.Entities.Chore", b =>

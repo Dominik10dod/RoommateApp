@@ -7,7 +7,6 @@
 @inject UsersClient UsersClient
 @inject NavigationManager Navigation
 @inject UserSessionService UserSession
-@using RoommateApp.Web.Client.Services
 @inject ApartmentStateService ApartmentState
 
 <div class="auth-container d-flex flex-column justify-content-between p-4 p-md-5">
@@ -126,7 +125,7 @@
                             <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle extra-small"
                                    placeholder="pl. APT4B-8X92" @bind="initialInviteCode" />
                         </div>
-                    }/
+                    }
 
                     <!-- Submit Button -->
                     <button class="btn btn-primary rounded-3 py-2 fw-bold w-100 mt-2"
@@ -160,8 +159,6 @@
 
 @code {
     private bool isSignIn = true;
-    private bool showPassword = false;
-    private bool rememberMe = true;
     private bool isSubmitting = false;
 
     private string nameInput = string.Empty;
@@ -195,6 +192,14 @@
                 if (result != null)
                 {
                     UserSession.SetUser(result);
+
+                    // Szobák betöltése a belépett felhasználóhoz
+                    var userRooms = await UsersClient.GetUserApartmentsAsync(result.Id);
+                    if (userRooms != null && userRooms.Any())
+                    {
+                        await ApartmentState.LoadAsync(userRooms.First().Id);
+                    }
+
                     Navigation.NavigateTo("/");
                 }
             }
@@ -225,6 +230,13 @@
                     }
 
                     UserSession.SetUser(registeredUser);
+
+                    var userRooms = await UsersClient.GetUserApartmentsAsync(registeredUser.Id);
+                    if (userRooms != null && userRooms.Any())
+                    {
+                        await ApartmentState.LoadAsync(userRooms.First().Id);
+                    }
+
                     Navigation.NavigateTo("/");
                 }
             }
@@ -239,7 +251,6 @@
             isSubmitting = false;
         }
     }
-}
 }
 
 <style>

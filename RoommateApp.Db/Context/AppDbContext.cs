@@ -62,6 +62,12 @@ namespace RoommateApp.Db.Context
                 new Chore { Id = 11, Title = "Restock dish soap and hand sanitizer", Category = "SHOPPING", Points = 5, Status = "Done", DueDateText = "Done · Oct 22", UserId = 2 },
                 new Chore { Id = 12, Title = "Tighten loose kitchen cabinet hinge", Category = "MAINTENANCE", Points = 15, Status = "Done", DueDateText = "Done · Oct 23", UserId = 1 }
             );
+
+            modelBuilder.Entity<UserApartment>().HasData(
+            new UserApartment { UserId = 1, ApartmentId = 1, IsAdmin = true },  // Kovács Péter (Admin)
+            new UserApartment { UserId = 2, ApartmentId = 1, IsAdmin = false }, // Tóth Anna
+            new UserApartment { UserId = 3, ApartmentId = 1, IsAdmin = false }  // Szabó Máté
+);
         }
     }
 }

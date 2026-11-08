@@ -19,12 +19,15 @@ namespace RoommateApp.Web.Client.Services
             _apartmentClient = apartmentClient;
         }
 
-        // Betöltés a belépett felhasználó szobaazonosítója alapján
+        // Betöltés a megadott targetApartmentId vagy a jelenlegi Id alapján
         public async Task LoadAsync(int? targetApartmentId = null)
         {
+            int idToLoad = targetApartmentId ?? (Id > 0 ? Id : 1);
+
             try
             {
-                var apt = await _apartmentClient.GetApartmentAsync();
+                // JAVÍTVA: Átadható az idToLoad a backend felé
+                var apt = await _apartmentClient.GetApartmentAsync(idToLoad);
                 if (apt != null)
                 {
                     Id = apt.Id;

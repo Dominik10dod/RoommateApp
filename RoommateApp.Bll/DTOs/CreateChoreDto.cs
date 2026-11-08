@@ -11,5 +11,6 @@ namespace RoommateApp.Bll.DTOs
         public int Points { get; set; }
         public string DueDateText { get; set; } = "Today";
         public int UserId { get; set; }
+        public int ApartmentId { get; set; }
     }
 }

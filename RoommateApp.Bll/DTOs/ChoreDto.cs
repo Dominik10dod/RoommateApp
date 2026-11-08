@@ -15,5 +15,7 @@ namespace RoommateApp.Bll.DTOs
         public int UserId { get; set; }
         public string UserName { get; set; } = string.Empty;
         public string UserAvatarUrl { get; set; } = string.Empty;
+        public int ApartmentId { get; set; }
+
     }
 }
