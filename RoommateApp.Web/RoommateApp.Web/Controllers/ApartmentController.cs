@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using RoommateApp.Bll.DTOs;
 using RoommateApp.Bll.Services;
 
@@ -30,6 +31,15 @@ namespace RoommateApp.Web.Controllers
             var updated = await _apartmentService.UpdateApartmentAsync(dto);
             if (updated == null) return NotFound();
             return Ok(updated);
+        }
+
+        // ÚJ: Szoba törlése ID alapján
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteApartment(int id)
+        {
+            var success = await _apartmentService.DeleteApartmentAsync(id);
+            if (!success) return NotFound("A megadott szoba nem található.");
+            return NoContent();
         }
     }
 }

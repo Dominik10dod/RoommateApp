@@ -77,5 +77,25 @@ namespace RoommateApp.Bll.Services
                 InviteCode = apt.InviteCode
             };
         }
+
+        public async Task<bool> DeleteApartmentAsync(int id)
+        {
+            var apartment = await _context.Apartments
+                .Include(a => a.UserApartments)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (apartment == null) return false;
+
+            // Töröljük a szobához tartozó chore-okat közvetlenül a táblából
+            var choresInApartment = _context.Chores.Where(c => c.ApartmentId == id);
+            _context.Chores.RemoveRange(choresInApartment);
+
+            // Töröljük a felhasználó-szoba kapcsolatokat és magát a lakást
+            _context.UserApartments.RemoveRange(apartment.UserApartments);
+            _context.Apartments.Remove(apartment);
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
     }
 }

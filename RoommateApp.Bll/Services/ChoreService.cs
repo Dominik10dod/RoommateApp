@@ -35,8 +35,7 @@ namespace RoommateApp.Bll.Services
         {
             return await _context.Chores
                 .Include(c => c.User)
-                // Ha a Chore entitásodban van ApartmentId, itt szűrünk rá:
-                // .Where(c => c.ApartmentId == apartmentId) 
+                .Where(c => c.ApartmentId == apartmentId) 
                 .Select(c => new ChoreDto
                 {
                     Id = c.Id,
@@ -72,13 +71,14 @@ namespace RoommateApp.Bll.Services
                 Title = dto.Title,
                 Category = dto.Category.ToUpper(),
                 Points = dto.Points,
-                Status = "ToDo", 
+                Status = "ToDo",
                 DueDateText = string.IsNullOrWhiteSpace(dto.DueDateText) ? "Today" : dto.DueDateText,
-                UserId = dto.UserId > 0 ? dto.UserId : 1
+                UserId = dto.UserId > 0 ? dto.UserId : 1,
+                ApartmentId = dto.ApartmentId > 0 ? dto.ApartmentId : 1 // Szoba összekötése
             };
 
             _context.Chores.Add(chore);
-            await _context.SaveChangesAsync(); 
+            await _context.SaveChangesAsync();
 
             var user = await _context.Users.FindAsync(chore.UserId);
 

@@ -1,24 +1,43 @@
 using Microsoft.EntityFrameworkCore;
+using Radzen;
 using RoommateApp.Bll.Services;
 using RoommateApp.Db.Context;
 using RoommateApp.Web.Components;
-using Radzen;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddRadzenComponents();
-builder.Services.AddScoped<ChoreService>();
+// =========================================================
+// 1. SZOLGÁLTATÁSOK REGISZTRÁLÁSA (Services Container)
+// =========================================================
 
-// 1. Blazor komponensek
+// CORS Szolgáltatás (Rugalmas Origin beállítással Blazor WASM-hez)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.SetIsOriginAllowed(_ => true)
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
+
+// Blazor & Radzen UI komponensek
+builder.Services.AddRadzenComponents();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
 
-// 2. Adatbázis és BLL szolgáltatások
+// Adatbázis (EF Core SQL Server)
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// BLL Szolgáltatások
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<ChoreService>();
+builder.Services.AddScoped<ApartmentService>();
+
+// HTTP Kliens & API Kliensek
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<RoommateApp.Web.Client.UsersClient>(sp =>
 {
@@ -28,9 +47,8 @@ builder.Services.AddScoped<RoommateApp.Web.Client.UsersClient>(sp =>
         ReadResponseAsString = true
     };
 });
-builder.Services.AddScoped<ApartmentService>();
 
-// 3. Web API, OpenAPI (NSwag) és központi hibakezelés
+// Web API, OpenAPI (NSwag) és Hibakezelés
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddProblemDetails();
@@ -42,12 +60,13 @@ builder.Services.AddOpenApiDocument(config =>
 
 var app = builder.Build();
 
-// --- AUTOMATIKUS ADATBÁZIS HELYREÁLLÍTÁS (Auto-Seed) ---
+// =========================================================
+// 2. AUTOMATIKUS ADATBÁZIS HELYREÁLLÍTÁS (Auto-Seed)
+// =========================================================
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    // Ha a UserApartments tábla üres, automatikusan összekötjük a meglévő felhasználókat a szobával
     if (!db.UserApartments.Any())
     {
         var defaultApartment = db.Apartments.FirstOrDefault();
@@ -77,9 +96,12 @@ using (var scope = app.Services.CreateScope())
         db.SaveChanges();
     }
 }
-// -------------------------------------------------------
 
-// 4. Fejlesztői eszközök és NSwag
+// =========================================================
+// 3. MIDDLEWARE PIPELINE (SZIGORÚ SORREND!)
+// =========================================================
+
+// A. Fejlesztői eszközök & Kivételkezelés
 if (app.Environment.IsDevelopment())
 {
     app.UseWebAssemblyDebugging();
@@ -92,13 +114,24 @@ else
     app.UseHsts();
 }
 
-// 5. Biztonsági és hálózati middleware-ek
-app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+// B. HTTPS és Hálózati átirányítások
 app.UseHttpsRedirection();
+app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+
+// C. Utválasztás (Routing)
+app.UseRouting();
+
+// D. CORS (Kizárólag a UseRouting után és a UseAuthorization / MapControllers előtt!)
+app.UseCors("AllowAll");
+
+// E. Autentikáció & Autorizáció & Biztonság
+app.UseAuthorization();
 app.UseAntiforgery();
+
+// F. Statikus fájlok
 app.MapStaticAssets();
 
-// 6. Végpontok (Endpoints) bekötése a pipeline végén
+// G. Végpontok (Controllers & Blazor App)
 app.MapControllers();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()

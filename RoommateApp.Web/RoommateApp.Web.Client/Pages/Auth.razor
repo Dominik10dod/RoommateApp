@@ -1,6 +1,7 @@
 ﻿@page "/login"
 @using Radzen
 @using Radzen.Blazor
+@using Microsoft.AspNetCore.Components.Web
 @using RoommateApp.Web.Client
 @using RoommateApp.Web.Client.Services
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
@@ -9,39 +10,35 @@
 @inject UserSessionService UserSession
 @inject ApartmentStateService ApartmentState
 
-<div class="auth-container d-flex flex-column justify-content-between p-4 p-md-5">
+<div class="auth-container d-flex flex-column justify-content-center p-3 p-md-4 min-vh-100">
     <!-- Top Bar -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-2">
-            <div class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
-                <RadzenIcon Icon="check_box" Style="font-size: 1.3rem;" />
+            <div class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                <RadzenIcon Icon="check_box" Style="font-size: 1.2rem;" />
             </div>
             <span class="fw-bold fs-5 text-dark">ChoreBoard</span>
-        </div>
-        <div class="small">
-            <span class="text-muted">Need help? </span>
-            <a href="#" class="text-primary text-decoration-none fw-bold">Contact Support</a>
         </div>
     </div>
 
     <!-- Main Content Grid -->
-    <div class="row align-items-center my-auto g-5">
+    <div class="row align-items-center my-auto g-4">
         <!-- Left Hero Section -->
         <div class="col-lg-6">
-            <h1 class="display-5 fw-bold text-dark lh-sm mb-4">
+            <h1 class="display-6 fw-bold text-dark lh-sm mb-3">
                 Keep your home clean,<br />
                 rewards high, and<br />
                 roommates happy.
             </h1>
-            <p class="text-secondary fs-6 mb-5 style-max-width">
+            <p class="text-secondary fs-6 mb-4 style-max-width">
                 The chore tracking app designed specifically for shared households. Track weekly tasks, claim high-value chores, and compete for Friday night rewards.
             </p>
 
             <!-- Bottom Left Widget Box -->
-            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white style-max-width">
-                <div class="d-flex align-items-start gap-3 mb-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white style-max-width">
+                <div class="d-flex align-items-start gap-3 mb-3">
                     <div class="bg-warning-subtle p-2 rounded-3 text-warning">
-                        <RadzenIcon Icon="star_outline" Style="font-size: 1.4rem;" />
+                        <RadzenIcon Icon="star_outline" Style="font-size: 1.3rem;" />
                     </div>
                     <div>
                         <h6 class="fw-bold text-dark m-0">Friday Pizza Night is unlocked!</h6>
@@ -49,16 +46,16 @@
                     </div>
                 </div>
 
-                <div class="row g-3">
+                <div class="row g-2">
                     <div class="col-6">
-                        <div class="bg-light p-3 rounded-3 d-flex align-items-center gap-2">
-                            <span class="fw-bold fs-4 text-primary">14</span>
+                        <div class="bg-light p-2 rounded-3 d-flex align-items-center gap-2">
+                            <span class="fw-bold fs-5 text-primary">14</span>
                             <span class="text-muted extra-small fw-semibold">Chores Completed</span>
                         </div>
                     </div>
                     <div class="col-6">
-                        <div class="bg-light p-3 rounded-3 d-flex align-items-center gap-2">
-                            <span class="fw-bold fs-4 text-success">5d</span>
+                        <div class="bg-light p-2 rounded-3 d-flex align-items-center gap-2">
+                            <span class="fw-bold fs-5 text-success">5d</span>
                             <span class="text-muted extra-small fw-semibold">Active Clean Streak</span>
                         </div>
                     </div>
@@ -68,9 +65,9 @@
 
         <!-- Right Auth Form Card -->
         <div class="col-lg-5 offset-lg-1">
-            <div class="card border-0 shadow-lg rounded-4 p-4 p-sm-5 bg-white">
+            <div class="card border-0 shadow-lg rounded-4 p-4 bg-white">
                 <!-- Tab Selector (Sign In / Sign Up) -->
-                <div class="bg-light p-1 rounded-pill d-flex mb-4">
+                <div class="bg-light p-1 rounded-pill d-flex mb-3">
                     <button class="btn btn-sm rounded-pill flex-fill fw-bold @(isSignIn ? "btn-white shadow-sm text-dark" : "btn-light text-secondary border-0")"
                             @onclick="() => SetTab(true)">
                         Sign In
@@ -82,53 +79,38 @@
                 </div>
 
                 <!-- Form Header -->
-                <h3 class="fw-bold text-dark mb-1">@(isSignIn ? "Welcome back" : "Create an account")</h3>
-                <p class="text-muted small mb-4">
+                <h4 class="fw-bold text-dark mb-1">@(isSignIn ? "Welcome back" : "Create an account")</h4>
+                <p class="text-muted extra-small mb-3">
                     @(isSignIn ? "Enter your room credentials to view the whiteboard." : "Fill in your details to join your roommate board.")
                 </p>
 
                 @if (!string.IsNullOrEmpty(errorMessage))
                 {
-                    <div class="alert alert-danger py-2 small mb-3">@errorMessage</div>
+                    <div class="alert alert-danger py-2 extra-small mb-3">@errorMessage</div>
                 }
 
                 <!-- Dynamic Form Fields -->
-                <div class="d-flex flex-column gap-3">
+                <div class="d-flex flex-column gap-2">
                     @if (!isSignIn)
                     {
-                        <div class="mb-3">
-                            <label class="form-label extra-small fw-bold text-secondary">Teljes Név</label>
-                            <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle" placeholder="Kovács Péter" @bind="nameInput" />
+                        <div>
+                            <label class="form-label extra-small fw-bold text-secondary mb-1">Teljes Név</label>
+                            <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle extra-small" placeholder="Kovács Péter" @bind="nameInput" />
                         </div>
                     }
 
-                    <div class="mb-3">
-                        <label class="form-label extra-small fw-bold text-secondary">E-mail cím</label>
-                        <input type="email" class="form-control rounded-3 py-2 px-3 border-light-subtle" placeholder="peter@example.com" @bind="emailInput" />
+                    <div>
+                        <label class="form-label extra-small fw-bold text-secondary mb-1">E-mail cím</label>
+                        <input type="email" class="form-control rounded-3 py-2 px-3 border-light-subtle extra-small" placeholder="peter@example.com" @bind="emailInput" />
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label extra-small fw-bold text-secondary">Jelszó</label>
-                        <input type="password" class="form-control rounded-3 py-2 px-3 border-light-subtle" placeholder="••••••••" @bind="passwordInput" />
+                    <div>
+                        <label class="form-label extra-small fw-bold text-secondary mb-1">Jelszó</label>
+                        <input type="password" class="form-control rounded-3 py-2 px-3 border-light-subtle extra-small" placeholder="••••••••" @bind="passwordInput" />
                     </div>
-
-                    @if (!isSignIn)
-                    {
-                        <div class="p-3 bg-light rounded-3 mb-3 border">
-                            <label class="form-label extra-small fw-bold text-primary mb-1">Új szoba létrehozása (Opcionális)</label>
-                            <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle extra-small mb-2"
-                                   placeholder="pl. Budapesti Kuckó" @bind="initialRoomName" />
-
-                            <div class="text-center text-muted extra-small my-1">- VAGY -</div>
-
-                            <label class="form-label extra-small fw-bold text-secondary mb-1">Csatlakozás meglévőhöz kód alapján</label>
-                            <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle extra-small"
-                                   placeholder="pl. APT4B-8X92" @bind="initialInviteCode" />
-                        </div>
-                    }
 
                     <!-- Submit Button -->
-                    <button class="btn btn-primary rounded-3 py-2 fw-bold w-100 mt-2"
+                    <button class="btn btn-primary rounded-3 py-2 fw-bold w-100 mt-2 extra-small"
                             style="background-color: #6366f1; border: none;"
                             @onclick="HandleSubmit" disabled="@isSubmitting">
                         @if (isSubmitting)
@@ -137,20 +119,6 @@
                         }
                         @(isSignIn ? "Sign In" : "Sign Up")
                     </button>
-
-                    <div class="position-relative my-2 text-center">
-                        <hr class="text-muted opacity-25" />
-                    </div>
-
-                    <!-- Secondary Google Action -->
-                    <button class="btn btn-outline-secondary rounded-3 py-2 fw-bold w-100 bg-white text-dark border-light-subtle extra-small">
-                        Sign In with Google
-                    </button>
-
-                    <div class="text-center mt-3 extra-small">
-                        <span class="text-muted">New apartment group? </span>
-                        <a href="#" class="text-primary text-decoration-none fw-bold">Create an Apartment Room</a>
-                    </div>
                 </div>
             </div>
         </div>
@@ -164,8 +132,6 @@
     private string nameInput = string.Empty;
     private string emailInput = string.Empty;
     private string passwordInput = string.Empty;
-    private string initialRoomName = string.Empty;
-    private string initialInviteCode = string.Empty;
     private string errorMessage = string.Empty;
 
     private void SetTab(bool signIn)
@@ -193,7 +159,6 @@
                 {
                     UserSession.SetUser(result);
 
-                    // Szobák betöltése a belépett felhasználóhoz
                     var userRooms = await UsersClient.GetUserApartmentsAsync(result.Id);
                     if (userRooms != null && userRooms.Any())
                     {
@@ -220,23 +185,7 @@
 
                 if (registeredUser != null)
                 {
-                    if (!string.IsNullOrWhiteSpace(initialRoomName))
-                    {
-                        await UsersClient.CreateApartmentAsync(registeredUser.Id, initialRoomName.Trim());
-                    }
-                    else if (!string.IsNullOrWhiteSpace(initialInviteCode))
-                    {
-                        await UsersClient.JoinApartmentAsync(registeredUser.Id, initialInviteCode.Trim());
-                    }
-
                     UserSession.SetUser(registeredUser);
-
-                    var userRooms = await UsersClient.GetUserApartmentsAsync(registeredUser.Id);
-                    if (userRooms != null && userRooms.Any())
-                    {
-                        await ApartmentState.LoadAsync(userRooms.First().Id);
-                    }
-
                     Navigation.NavigateTo("/");
                 }
             }

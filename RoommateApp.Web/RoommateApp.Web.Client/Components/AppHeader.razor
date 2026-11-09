@@ -70,12 +70,19 @@
                             <div class="text-muted extra-small">@(UserSession.CurrentUser?.Email ?? "Nincs bejelentkezve")</div>
                         </div>
 
-                        <button class="dropdown-item rounded-3 py-2 extra-small d-flex align-items-center gap-2" @onclick="OpenCreateRoomModal">
+                        <!-- Új Szoba Létrehozása -->
+                        <button class="dropdown-item rounded-3 py-2 extra-small d-flex align-items-center gap-2 mb-1" @onclick="OpenCreateRoomModal">
                             <RadzenIcon Icon="add_circle_outline" Style="font-size: 1.1rem; color: #6366f1;" />
                             <span class="fw-semibold text-dark">Új szoba létrehozása</span>
                         </button>
 
-                        <div class="dropdown-divider my-1"></div>
+                        <!-- ÚJ: Csatlakozás Szobához Kód Alapján -->
+                        <button class="dropdown-item rounded-3 py-2 extra-small d-flex align-items-center gap-2" @onclick="OpenJoinRoomModal">
+                            <RadzenIcon Icon="group_add" Style="font-size: 1.1rem; color: #10b981;" />
+                            <span class="fw-semibold text-dark">Csatlakozás szobához</span>
+                        </button>
+
+                        <div class="dropdown-divider my-2"></div>
 
                         <!-- Szobák listázása a profil menüben -->
                         <div class="px-3 py-1 text-uppercase text-muted extra-small fw-bold">Szobáid</div>
@@ -94,7 +101,7 @@
                             </button>
                         }
 
-                        <div class="dropdown-divider my-1"></div>
+                        <div class="dropdown-divider my-2"></div>
 
                         <button class="dropdown-item rounded-3 py-2 extra-small text-danger d-flex align-items-center gap-2" @onclick="Logout">
                             <RadzenIcon Icon="logout" Style="font-size: 1.1rem; color: #ef4444;" />
@@ -112,23 +119,58 @@
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4 p-3">
-                <div class="modal-header border-0 pb-0">
+            <div class="modal-content border-0 shadow-lg rounded-4 p-4 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="modal-title fw-bold text-dark">Új szoba létrehozása</h5>
                     <button type="button" class="btn-close" @onclick="CloseCreateRoomModal"></button>
                 </div>
-                <div class="modal-body py-3">
+                <div class="modal-body py-2 px-0">
                     <div class="mb-3">
                         <label class="form-label extra-small fw-bold text-secondary">Szoba / Lakás neve</label>
                         <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle"
                                placeholder="pl. Apartment 5C vagy Budapesti Kuckó" @bind="newRoomNameInput" />
                     </div>
                 </div>
-                <div class="modal-footer border-0 pt-0">
+                <div class="d-flex justify-content-end gap-2 pt-2">
                     <button class="btn btn-light btn-sm rounded-pill px-3 extra-small" @onclick="CloseCreateRoomModal">Mégse</button>
                     <button class="btn btn-primary btn-sm rounded-pill px-4 extra-small fw-bold"
                             style="background-color: #6366f1; border: none;" @onclick="CreateNewRoom">
                         Létrehozás
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- ÚJ: Csatlakozás Szobához Modál -->
+@if (showJoinRoomModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 p-4 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="modal-title fw-bold text-dark">Csatlakozás szobához</h5>
+                    <button type="button" class="btn-close" @onclick="CloseJoinRoomModal"></button>
+                </div>
+                <div class="modal-body py-2 px-0">
+                    @if (!string.IsNullOrEmpty(joinRoomErrorMessage))
+                    {
+                        <div class="alert alert-danger py-2 extra-small mb-3">@joinRoomErrorMessage</div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label extra-small fw-bold text-secondary">Meghívó kód</label>
+                        <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle text-uppercase"
+                               placeholder="pl. APT4B-8X92" @bind="joinInviteCodeInput" />
+                        <span class="text-muted extra-small mt-1 d-block">Kérd el a szoba adminjától az 8 karakteres meghívó kódot.</span>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end gap-2 pt-2">
+                    <button class="btn btn-light btn-sm rounded-pill px-3 extra-small" @onclick="CloseJoinRoomModal">Mégse</button>
+                    <button class="btn btn-success btn-sm rounded-pill px-4 extra-small fw-bold"
+                            style="background-color: #10b981; border: none;" @onclick="JoinRoomByCode">
+                        Csatlakozás
                     </button>
                 </div>
             </div>
@@ -142,12 +184,17 @@
 
     private bool isProfileMenuOpen = false;
     private bool showCreateRoomModal = false;
+    private bool showJoinRoomModal = false;
+
     private string newRoomNameInput = string.Empty;
+    private string joinInviteCodeInput = string.Empty;
+    private string joinRoomErrorMessage = string.Empty;
+
     private int userPoints = 0;
 
     private string AvatarUrl => UserSession.CurrentUser != null
-    ? $"https://api.dicebear.com/7.x/identicon/svg?seed={UserSession.CurrentUser.Id}"
-    : "https://api.dicebear.com/7.x/identicon/svg?seed=default";
+        ? $"https://api.dicebear.com/7.x/identicon/svg?seed={UserSession.CurrentUser.Id}"
+        : "https://api.dicebear.com/7.x/identicon/svg?seed=default";
 
     private List<ApartmentDto> myRooms = new();
 
@@ -157,7 +204,7 @@
         UserSession.OnChange += StateHasChanged;
 
         await LoadUserApartments();
-        await CalculateUserPoints(); // Pontszám kiszámítása indításkor
+        await CalculateUserPoints();
     }
 
     private async Task LoadUserApartments()
@@ -171,7 +218,6 @@
             {
                 myRooms = rooms.ToList();
 
-                // Ha még nincs kiválasztva szoba, az elsőt töltjük be
                 if (ApartmentState.Id == 0)
                 {
                     var activeRoom = myRooms.First();
@@ -201,7 +247,7 @@
             }
 
             CloseCreateRoomModal();
-            Navigation.NavigateTo("/", forceLoad: true);
+            Navigation.NavigateTo("/", forceLoad: false); // JAVÍTVA: Nem tölti újra a böngészőt, megmarad a session!
         }
         catch (Exception ex)
         {
@@ -209,7 +255,35 @@
         }
     }
 
-    // JAVÍTVA: Nem írja felül az adatbázist, hanem betölti az új szobát
+    private async Task JoinRoomByCode()
+    {
+        if (string.IsNullOrWhiteSpace(joinInviteCodeInput)) return;
+
+        int userId = UserSession.CurrentUser?.Id ?? 1;
+        joinRoomErrorMessage = string.Empty;
+
+        try
+        {
+            await UsersClient.JoinApartmentAsync(userId, joinInviteCodeInput.Trim().ToUpper());
+            await LoadUserApartments();
+
+            // Átváltunk a frissen csatlakozott szobára
+            var joinedRoom = myRooms.FirstOrDefault(r => r.InviteCode == joinInviteCodeInput.Trim().ToUpper());
+            if (joinedRoom != null)
+            {
+                await ApartmentState.LoadAsync(joinedRoom.Id);
+            }
+
+            CloseJoinRoomModal();
+            Navigation.NavigateTo("/", forceLoad: false);
+        }
+        catch (Exception ex)
+        {
+            joinRoomErrorMessage = "Érvénytelen meghívó kód vagy már csatlakoztál ehhez a szobához!";
+            Console.WriteLine($"Hiba a szobához csatlakozáskor: {ex.Message}");
+        }
+    }
+
     private async Task SwitchRoom(int roomId)
     {
         isProfileMenuOpen = false;
@@ -218,17 +292,16 @@
         {
             await ApartmentState.LoadAsync(room.Id);
             await CalculateUserPoints();
-            Navigation.NavigateTo("/", forceLoad: true); // Oldal újratöltése az új szoba adataival
+            Navigation.NavigateTo("/", forceLoad: false); // JAVÍTVA: Nem tölti újra a böngészőt!
         }
     }
 
     private async Task CalculateUserPoints()
     {
-        if (UserSession.CurrentUser != null)
+        if (UserSession.CurrentUser != null && ApartmentState.Id > 0)
         {
             try
             {
-                // JAVÍTVA: GetChoresByApartmentAsync hívása a szoba azonosítójával
                 var chores = await ChoresClient.GetChoresByApartmentAsync(ApartmentState.Id);
                 if (chores != null)
                 {
@@ -245,8 +318,12 @@
     }
 
     private void ToggleProfileMenu() => isProfileMenuOpen = !isProfileMenuOpen;
+
     private void OpenCreateRoomModal() { isProfileMenuOpen = false; showCreateRoomModal = true; }
     private void CloseCreateRoomModal() { showCreateRoomModal = false; newRoomNameInput = string.Empty; }
+
+    private void OpenJoinRoomModal() { isProfileMenuOpen = false; showJoinRoomModal = true; joinRoomErrorMessage = string.Empty; }
+    private void CloseJoinRoomModal() { showJoinRoomModal = false; joinInviteCodeInput = string.Empty; joinRoomErrorMessage = string.Empty; }
 
     private void Logout()
     {

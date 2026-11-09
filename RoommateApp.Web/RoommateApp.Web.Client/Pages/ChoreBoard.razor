@@ -11,10 +11,11 @@
 @inject NavigationManager Navigation
 @inject ApartmentStateService ApartmentState
 @inject UserSessionService UserSession
+@inject IJSRuntime JS
 @implements IDisposable
 
 <div class="p-3 p-md-4">
-    <!-- Egységes Fejléc Komponens -->
+    <!-- Header Component -->
     <AppHeader ActivePage="Board" />
 
     <!-- Subheader Section -->
@@ -24,8 +25,14 @@
             <p class="text-muted small m-0">Drag cards to update state. Complete chores to earn points!</p>
         </div>
         <div class="d-flex gap-2">
-            <button class="btn btn-white btn-sm border bg-white rounded-2 px-3 text-secondary">Filter by Person</button>
-            <button class="btn btn-white btn-sm border bg-white rounded-2 px-3 text-secondary">Weekly Reward</button>
+            <!-- Highlight My Chores Button -->
+            <button class="btn btn-sm border rounded-2 px-3 transition-all @(isHighlightMyChores ? "btn-primary text-white shadow-sm" : "btn-white bg-white text-secondary")"
+                    @onclick="TogglePersonFilter">
+                <RadzenIcon Icon="person" Style="font-size: 0.9rem;" class="me-1" />
+                @(isHighlightMyChores ? "My Chores Highlighted" : "Highlight My Chores")
+            </button>
+
+            <!-- Show / Hide Panel Button -->
             <button class="btn btn-white btn-sm border bg-white rounded-2 px-3 text-secondary d-flex align-items-center gap-1" @onclick="TogglePanel">
                 <RadzenIcon Icon="@(isPanelHidden ? "visibility" : "visibility_off")" Style="font-size: 1rem;" /> 
                 @(isPanelHidden ? "Show Panel" : "Hide Panel")
@@ -37,7 +44,7 @@
     {
         <div class="d-flex align-items-center justify-content-center p-5">
             <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Adatok betöltése az adatbázisból...</span>
+                <span class="visually-hidden">Loading data...</span>
             </div>
         </div>
     }
@@ -47,72 +54,72 @@
         <RadzenRow class="g-4">
             <!-- Left Kanban Area -->
             <RadzenColumn Size="12" SizeLg="@(isPanelHidden ? 12 : 9)">
-                <RadzenRow class="g-3">
+                <div class="d-flex gap-3 w-100 pb-3" style="min-height: 600px;">
 
-                    <!-- Column 1: To Do -->
-                    <RadzenColumn Size="12" SizeMd="4" class="d-flex flex-column">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div class="d-flex align-items-center gap-2">
-                                <h3 class="h6 fw-bold m-0 text-dark">To Do</h3>
-                                <span class="badge bg-light text-secondary border rounded-pill px-2">@toDoChores.Count</span>
+                    @foreach (var col in boardColumns)
+                    {
+                        var colChores = GetChoresForColumn(col.Id);
+
+                        <div class="kanban-column flex-fill d-flex flex-column" style="min-width: 200px;">
+                            <!-- Column Header -->
+                            <div class="d-flex justify-content-between align-items-center mb-3 px-1">
+                                <div class="d-flex align-items-center gap-2 flex-grow-1">
+                                    @if (col.IsEditing)
+                                    {
+                                        <input type="text" class="form-control form-control-sm extra-small py-1 px-2"
+                                               @bind="col.Title"
+                                               @onblur="() => FinishEditingColumn(col)"
+                                               @onkeyup='async (e) => { if(e.Key == "Enter") await FinishEditingColumn(col); }'
+                                               autofocus />
+                                    }
+                                    else
+                                    {
+                                        <!-- Mindegyik oszlop címe dupla kattintással átnevezhető -->
+                                        <h3 class="h6 fw-bold m-0 text-dark text-truncate"
+                                            title="Double-click to rename"
+                                            @ondblclick="() => col.IsEditing = true">
+                                            @col.Title
+                                        </h3>
+                                    }
+                                    <span class="badge bg-light text-secondary border rounded-pill px-2 extra-small">@colChores.Count</span>
+                                </div>
+
+                                <div class="d-flex align-items-center gap-1 ms-2">
+                                    <!-- Add column after (+) except for Done -->
+                                    @if (col.Id != "Done")
+                                    {
+                                        <button class="btn btn-sm btn-link p-0 text-muted text-decoration-none"
+                                                title="Add new column after"
+                                                @onclick="() => AddColumnAfter(col)">
+                                            <RadzenIcon Icon="add" Style="font-size: 1.1rem; color: #64748b;" />
+                                        </button>
+                                    }
+
+                                    <!-- Törlés gomb (x) kizárólag a nem alapértelmezett oszlopoknál látható -->
+                                    @if (!col.IsBuiltIn)
+                                    {
+                                        <button class="btn btn-sm btn-link p-0 text-danger text-decoration-none ms-1"
+                                                title="Remove column"
+                                                @onclick="() => RemoveColumn(col)">
+                                            <RadzenIcon Icon="close" Style="font-size: 1.1rem;" />
+                                        </button>
+                                    }
+                                </div>
                             </div>
-                            <RadzenIcon Icon="add" Style="cursor: pointer; color: #64748b;" />
-                        </div>
 
-                        <!-- Drop Zone: ToDo -->
-                        <div class="d-flex flex-column gap-3 drop-zone p-2 rounded-3 flex-grow-1"
-                             @ondragover:preventDefault
-                             @ondrop='() => HandleDrop("ToDo")'>
-                            @foreach (var chore in toDoChores)
-                            {
-                                @RenderChoreCard(chore)
-                            }
-                        </div>
-                    </RadzenColumn>
-
-                    <!-- Column 2: In Progress -->
-                    <RadzenColumn Size="12" SizeMd="4" class="d-flex flex-column">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div class="d-flex align-items-center gap-2">
-                                <h3 class="h6 fw-bold m-0 text-dark">In Progress</h3>
-                                <span class="badge bg-light text-secondary border rounded-pill px-2">@inProgressChores.Count</span>
+                            <!-- Drop Zone -->
+                            <div class="d-flex flex-column gap-3 drop-zone p-2 rounded-3 flex-grow-1"
+                                 @ondragover:preventDefault
+                                 @ondrop='() => HandleDrop(col.Id)'>
+                                @foreach (var chore in colChores)
+                                {
+                                    @RenderChoreCard(chore)
+                                }
                             </div>
-                            <RadzenIcon Icon="add" Style="cursor: pointer; color: #64748b;" />
                         </div>
+                    }
 
-                        <!-- Drop Zone: InProgress -->
-                        <div class="d-flex flex-column gap-3 drop-zone p-2 rounded-3 flex-grow-1"
-                             @ondragover:preventDefault
-                             @ondrop='() => HandleDrop("InProgress")'>
-                            @foreach (var chore in inProgressChores)
-                            {
-                                @RenderChoreCard(chore)
-                            }
-                        </div>
-                    </RadzenColumn>
-
-                    <!-- Column 3: Done -->
-                    <RadzenColumn Size="12" SizeMd="4" class="d-flex flex-column">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div class="d-flex align-items-center gap-2">
-                                <h3 class="h6 fw-bold m-0 text-dark">Done</h3>
-                                <span class="badge bg-light text-secondary border rounded-pill px-2">@doneChores.Count</span>
-                            </div>
-                            <RadzenIcon Icon="add" Style="cursor: pointer; color: #64748b;" />
-                        </div>
-
-                        <!-- Drop Zone: Done -->
-                        <div class="d-flex flex-column gap-3 drop-zone p-2 rounded-3 flex-grow-1"
-                             @ondragover:preventDefault
-                             @ondrop='() => HandleDrop("Done")'>
-                            @foreach (var chore in doneChores)
-                            {
-                                @RenderChoreCard(chore)
-                            }
-                        </div>
-                    </RadzenColumn>
-
-                </RadzenRow>
+                </div>
             </RadzenColumn>
 
             <!-- Right Sidebar Area -->
@@ -146,7 +153,7 @@
                                             <div class="d-flex align-items-center gap-2">
                                                 <span class="fw-bold @(isFirst ? "text-primary" : "text-muted") small">@rank</span>
                                                 <RadzenAvatar Image="@userStat.AvatarUrl" Size="AvatarSize.ExtraSmall" class="rounded-circle" />
-                                                <span class="fw-bold small text-dark">@userStat.Name @(isFirst ? "(Élen)" : "")</span>
+                                                <span class="fw-bold small text-dark">@userStat.Name @(isFirst ? "(Lead)" : "")</span>
                                             </div>
                                             <span class="fw-bold @(isFirst ? "text-primary" : "text-dark") small">@userStat.Points pts</span>
                                         </div>
@@ -163,7 +170,7 @@
                                     <span class="fw-bold text-primary extra-small">@totalApartmentPoints / @ApartmentState.RewardThreshold.ToString("N0") pts</span>
                                 </div>
                                 <p class="m-0 text-muted extra-small">
-                                    Reach @ApartmentState.RewardThreshold.ToString("N0") points collectively to unlock Friday Pizza Night! 🍕
+                                    Reach @ApartmentState.RewardThreshold.ToString("N0") points collectively to unlock @ApartmentState.RewardDescription
                                 </p>
                             </div>
                         </div>
@@ -181,7 +188,7 @@
                                         <div class="text-uppercase text-muted fw-bold extra-small d-flex align-items-center gap-1">
                                             <RadzenIcon Icon="local_fire_department" Style="color: #ef4444; font-size: 0.9rem;" /> STREAK
                                         </div>
-                                        <div class="h4 fw-bold m-0 mt-1 text-dark">5 <small class="text-muted fs-6 fw-normal">days</small></div>
+                                        <div class="h4 fw-bold m-0 mt-1 text-dark">@activeStreakDays <small class="text-muted fs-6 fw-normal">days</small></div>
                                     </div>
                                 </div>
                                 <div class="col-6">
@@ -189,7 +196,7 @@
                                         <div class="text-uppercase text-muted fw-bold extra-small d-flex align-items-center gap-1">
                                             <RadzenIcon Icon="check_circle" Style="color: #10b981; font-size: 0.9rem;" /> DONE WEEKLY
                                         </div>
-                                        <div class="h4 fw-bold m-0 mt-1 text-dark">@doneChores.Count <small class="text-muted fs-6 fw-normal">chores</small></div>
+                                        <div class="h4 fw-bold m-0 mt-1 text-dark">@doneChoresCount <small class="text-muted fs-6 fw-normal">chores</small></div>
                                     </div>
                                 </div>
                             </div>
@@ -199,7 +206,7 @@
                                 <div class="p-2 rounded-3 bg-light d-flex align-items-start gap-2">
                                     <RadzenIcon Icon="electric_bolt" Style="color: #eab308; font-size: 1.1rem;" />
                                     <span class="text-muted extra-small">
-                                        <strong>@leaderboard.First().Name</strong> vezeti jelenleg a ranglistát!
+                                        <strong>@leaderboard.First().Name</strong> is currently leading the leaderboard!
                                     </span>
                                 </div>
                             }
@@ -211,19 +218,112 @@
     }
 </div>
 
+<!-- MANDATORY ROOM ONBOARDING MODAL -->
+@if (showMandatoryRoomModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.85); z-index: 2000; backdrop-filter: blur(4px);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 p-4 bg-white">
+                <div class="text-center mb-4">
+                    <div class="bg-primary-subtle text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 56px; height: 56px;">
+                        <RadzenIcon Icon="home" Style="font-size: 2rem; color: #6366f1;" />
+                    </div>
+                    <h4 class="fw-bold text-dark m-0">Welcome to ChoreBoard!</h4>
+                    <p class="text-muted small mt-2">To continue, please create a new room or join an existing one using an invite code.</p>
+                </div>
+
+                <!-- Tab selector -->
+                <div class="bg-light p-1 rounded-pill d-flex mb-4">
+                    <button class="btn btn-sm rounded-pill flex-fill fw-bold @(isCreateTab ? "btn-primary shadow-sm" : "btn-light text-secondary border-0")"
+                            @onclick="() => SetMandatoryTab(true)">
+                        Create New Room
+                    </button>
+                    <button class="btn btn-sm rounded-pill flex-fill fw-bold @(!isCreateTab ? "btn-primary shadow-sm" : "btn-light text-secondary border-0")"
+                            @onclick="() => SetMandatoryTab(false)">
+                        Join via Code
+                    </button>
+                </div>
+
+                @if (!string.IsNullOrEmpty(mandatoryModalError))
+                {
+                    <div class="alert alert-danger py-2 extra-small mb-3 text-center">@mandatoryModalError</div>
+                }
+
+                @if (isCreateTab)
+                {
+                    <div class="mb-3">
+                        <label class="form-label extra-small fw-bold text-secondary">Apartment Room Name</label>
+                        <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle"
+                               placeholder="e.g. Downtown Loft or Apt 4B" @bind="mandatoryRoomName" />
+                    </div>
+                    <button class="btn btn-primary rounded-3 py-2 fw-bold w-100 mt-2"
+                            style="background-color: #6366f1; border: none;"
+                            @onclick="HandleMandatoryCreateRoom" disabled="@isSubmittingMandatory">
+                        @if (isSubmittingMandatory)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        Create Room & Enter
+                    </button>
+                }
+                else
+                {
+                    <div class="mb-3">
+                        <label class="form-label extra-small fw-bold text-secondary">Invite Code</label>
+                        <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle text-uppercase"
+                               placeholder="e.g. APT4B-8X92" @bind="mandatoryInviteCode" />
+                        <span class="text-muted extra-small mt-1 d-block">Ask your roommate admin for the invite code.</span>
+                    </div>
+                    <button class="btn btn-success rounded-3 py-2 fw-bold w-100 mt-2"
+                            style="background-color: #10b981; border: none;"
+                            @onclick="HandleMandatoryJoinRoom" disabled="@isSubmittingMandatory">
+                        @if (isSubmittingMandatory)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        Join Apartment Room
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private bool isLoading = true;
     private bool isPanelHidden = false;
+    private bool isHighlightMyChores = false;
     private string currentMonth = DateTime.Now.ToString("MMMM", CultureInfo.CreateSpecificCulture("en-US")).ToUpper();
+
+    public class BoardColumn
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public bool IsBuiltIn { get; set; } = false;
+        public bool IsEditing { get; set; } = false;
+    }
+
+    private List<BoardColumn> boardColumns = new()
+    {
+        new BoardColumn { Id = "ToDo", Title = "To Do", IsBuiltIn = true },
+        new BoardColumn { Id = "InProgress", Title = "In Progress", IsBuiltIn = true },
+        new BoardColumn { Id = "Done", Title = "Done", IsBuiltIn = true }
+    };
+
+    private bool showMandatoryRoomModal = false;
+    private bool isCreateTab = true;
+    private string mandatoryRoomName = string.Empty;
+    private string mandatoryInviteCode = string.Empty;
+    private string mandatoryModalError = string.Empty;
+    private bool isSubmittingMandatory = false;
 
     private List<ChoreDto> allChores = new();
     private List<UserDto> allUsers = new();
 
-    private List<ChoreDto> toDoChores = new();
-    private List<ChoreDto> inProgressChores = new();
-    private List<ChoreDto> doneChores = new();
     private List<LeaderboardUser> leaderboard = new();
     private int totalApartmentPoints = 0;
+    private int activeStreakDays = 0;
+    private int doneChoresCount = 0;
 
     private ChoreDto? draggedChore;
 
@@ -237,6 +337,11 @@
 
     private void TogglePanel() => isPanelHidden = !isPanelHidden;
 
+    private void TogglePersonFilter()
+    {
+        isHighlightMyChores = !isHighlightMyChores;
+    }
+
     protected override async Task OnInitializedAsync()
     {
         if (!UserSession.IsLoggedIn)
@@ -245,24 +350,66 @@
             return;
         }
 
-        ApartmentState.OnChange += StateHasChanged;
+        ApartmentState.OnChange += OnApartmentChanged;
         UserSession.OnChange += StateHasChanged;
+
+        await CheckUserApartmentsAndLoadAsync();
+    }
+
+    private async Task CheckUserApartmentsAndLoadAsync()
+    {
+        isLoading = true;
+        int currentUserId = UserSession.CurrentUser?.Id ?? 1;
 
         try
         {
-            await ApartmentState.LoadAsync();
+            var userRooms = await UsersClient.GetUserApartmentsAsync(currentUserId);
 
-            var chores = await ChoresClient.GetChoresByApartmentAsync(ApartmentState.Id);
-            var users = await UsersClient.GetUsersByApartmentAsync(ApartmentState.Id);
+            if (userRooms == null || !userRooms.Any())
+            {
+                ApartmentState.Reset();
+                showMandatoryRoomModal = true;
+                isLoading = false;
+                return;
+            }
 
-            allChores = chores.ToList();
-            allUsers = users.ToList();
+            bool currentRoomStillExists = userRooms.Any(r => r.Id == ApartmentState.Id);
 
-            RefreshBoardAndLeaderboard();
+            if (ApartmentState.Id == 0 || !currentRoomStillExists)
+            {
+                var nextRoom = userRooms.First();
+                await ApartmentState.LoadAsync(nextRoom.Id);
+            }
+
+            showMandatoryRoomModal = false;
+            await LoadBoardDataAsync();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Hiba az adatok lekérésekor: {ex.Message}");
+            Console.WriteLine($"Error checking rooms: {ex.Message}");
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadBoardDataAsync()
+    {
+        try
+        {
+            if (ApartmentState.Id > 0)
+            {
+                await LoadColumnsAsync();
+                var chores = await ChoresClient.GetChoresByApartmentAsync(ApartmentState.Id);
+                var users = await UsersClient.GetUsersByApartmentAsync(ApartmentState.Id);
+
+                allChores = chores.ToList();
+                allUsers = users.ToList();
+
+                RefreshBoardAndLeaderboard();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading board data: {ex.Message}");
         }
         finally
         {
@@ -270,10 +417,134 @@
         }
     }
 
+    private async Task SaveColumnsAsync()
+    {
+        if (ApartmentState.Id <= 0) return;
+        try
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(boardColumns);
+            await JS.InvokeVoidAsync("localStorage.setItem", $"choreboard_columns_{ApartmentState.Id}", json);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving columns: {ex.Message}");
+        }
+    }
+
+    private async Task LoadColumnsAsync()
+    {
+        if (ApartmentState.Id <= 0) return;
+        try
+        {
+            var json = await JS.InvokeAsync<string>("localStorage.getItem", $"choreboard_columns_{ApartmentState.Id}");
+            if (!string.IsNullOrWhiteSpace(json))
+            {
+                var saved = System.Text.Json.JsonSerializer.Deserialize<List<BoardColumn>>(json);
+                if (saved != null && saved.Any())
+                {
+                    foreach (var c in saved)
+                    {
+                        c.IsEditing = false;
+                        // Biztosítjuk, hogy a ToDo, InProgress, Done mindig védve maradjon
+                        if (c.Id == "ToDo" || c.Id == "InProgress" || c.Id == "Done")
+                        {
+                            c.IsBuiltIn = true;
+                        }
+                    }
+                    boardColumns = saved;
+                    return;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading columns: {ex.Message}");
+        }
+
+        boardColumns = new List<BoardColumn>
+        {
+            new BoardColumn { Id = "ToDo", Title = "To Do", IsBuiltIn = true },
+            new BoardColumn { Id = "InProgress", Title = "In Progress", IsBuiltIn = true },
+            new BoardColumn { Id = "Done", Title = "Done", IsBuiltIn = true }
+        };
+    }
+
+    private async Task FinishEditingColumn(BoardColumn col)
+    {
+        col.IsEditing = false;
+        await SaveColumnsAsync();
+    }
+
+    private async void OnApartmentChanged()
+    {
+        await LoadBoardDataAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
     public void Dispose()
     {
-        ApartmentState.OnChange -= StateHasChanged;
+        ApartmentState.OnChange -= OnApartmentChanged;
         UserSession.OnChange -= StateHasChanged;
+    }
+
+    private async Task AddColumnAfter(BoardColumn currentCol)
+    {
+        int index = boardColumns.IndexOf(currentCol);
+        var newCol = new BoardColumn
+        {
+            Id = "Custom_" + Guid.NewGuid().ToString().Substring(0, 8),
+            Title = "New Column",
+            IsBuiltIn = false,
+            IsEditing = true
+        };
+
+        if (index >= 0 && index < boardColumns.Count)
+        {
+            boardColumns.Insert(index + 1, newCol);
+        }
+        else
+        {
+            boardColumns.Add(newCol);
+        }
+
+        await SaveColumnsAsync();
+    }
+
+    private async Task RemoveColumn(BoardColumn col)
+    {
+        // Alapértelmezett oszlop nem törölhető
+        if (col.IsBuiltIn) return;
+
+        var targetColId = boardColumns.FirstOrDefault(c => c.Id != col.Id)?.Id ?? "ToDo";
+        var choresInCol = allChores.Where(c => c.Status == col.Id).ToList();
+
+        foreach (var chore in choresInCol)
+        {
+            chore.Status = targetColId;
+            try
+            {
+                await ChoresClient.UpdateChoreAsync(chore.Id, new UpdateChoreDto
+                {
+                    Id = chore.Id,
+                    Status = chore.Status,
+                    UserId = chore.UserId,
+                    DueDateText = chore.DueDateText
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating chore column status: {ex.Message}");
+            }
+        }
+
+        boardColumns.Remove(col);
+        await SaveColumnsAsync();
+        RefreshBoardAndLeaderboard();
+    }
+
+    private List<ChoreDto> GetChoresForColumn(string columnId)
+    {
+        return allChores.Where(c => c.Status == columnId).ToList();
     }
 
     private void HandleDragStart(ChoreDto chore)
@@ -287,14 +558,13 @@
         {
             draggedChore.Status = targetStatus;
 
-            // Ha a "Done" oszlopba kerül, a bejelentkezett felhasználó kapja a pontot
+            allChores.Remove(draggedChore);
+            allChores.Add(draggedChore);
+
             if (targetStatus == "Done")
             {
-                if (!draggedChore.DueDateText.StartsWith("Done"))
-                {
-                    var todayStr = DateTime.Now.ToString("MMM dd", CultureInfo.CreateSpecificCulture("en-US"));
-                    draggedChore.DueDateText = $"Done · {todayStr}";
-                }
+                var todayStr = DateTime.Now.ToString("MMM dd", CultureInfo.CreateSpecificCulture("en-US"));
+                draggedChore.DueDateText = $"Done · {todayStr}";
 
                 int currentUserId = UserSession.CurrentUser?.Id ?? 1;
                 var activeUser = allUsers.FirstOrDefault(u => u.Id == currentUserId) ?? allUsers.FirstOrDefault();
@@ -321,7 +591,7 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Hiba a feladat mentésekor: {ex.Message}");
+                Console.WriteLine($"Error saving chore status: {ex.Message}");
             }
 
             draggedChore = null;
@@ -330,14 +600,13 @@
 
     private void RefreshBoardAndLeaderboard()
     {
-        toDoChores = allChores.Where(c => c.Status == "ToDo").ToList();
-        inProgressChores = allChores.Where(c => c.Status == "InProgress").ToList();
-        doneChores = allChores.Where(c => c.Status == "Done").ToList();
+        var doneChores = allChores.Where(c => c.Status == "Done").ToList();
+        doneChoresCount = doneChores.Count;
 
         leaderboard = allUsers.Select(u =>
         {
-            int userPoints = allChores
-                .Where(c => c.UserId == u.Id && c.Status == "Done")
+            int userPoints = doneChores
+                .Where(c => c.UserId == u.Id)
                 .Sum(c => c.Points);
 
             return new LeaderboardUser
@@ -352,6 +621,131 @@
         .ToList();
 
         totalApartmentPoints = leaderboard.Sum(u => u.Points);
+        activeStreakDays = CalculateActiveStreak(doneChores);
+    }
+
+    private int CalculateActiveStreak(List<ChoreDto> doneChores)
+    {
+        if (!doneChores.Any()) return 0;
+
+        var completedDates = new HashSet<DateTime>();
+
+        foreach (var chore in doneChores)
+        {
+            if (string.IsNullOrWhiteSpace(chore.DueDateText)) continue;
+
+            if (chore.DueDateText.Contains("Today"))
+            {
+                completedDates.Add(DateTime.Today);
+            }
+            else if (chore.DueDateText.Contains("Done ·"))
+            {
+                string datePart = chore.DueDateText.Replace("Done ·", "").Trim();
+                if (DateTime.TryParseExact(datePart, "MMM dd", CultureInfo.CreateSpecificCulture("en-US"), DateTimeStyles.None, out var parsedDate))
+                {
+                    completedDates.Add(new DateTime(DateTime.Now.Year, parsedDate.Month, parsedDate.Day).Date);
+                }
+            }
+        }
+
+        if (!completedDates.Any()) return 0;
+
+        int streak = 0;
+        DateTime checkDate = DateTime.Today;
+
+        if (!completedDates.Contains(checkDate))
+        {
+            checkDate = checkDate.AddDays(-1);
+        }
+
+        while (completedDates.Contains(checkDate))
+        {
+            streak++;
+            checkDate = checkDate.AddDays(-1);
+        }
+
+        return streak;
+    }
+
+    private void SetMandatoryTab(bool create)
+    {
+        isCreateTab = create;
+        mandatoryModalError = string.Empty;
+    }
+
+    private async Task HandleMandatoryCreateRoom()
+    {
+        if (string.IsNullOrWhiteSpace(mandatoryRoomName))
+        {
+            mandatoryModalError = "Please enter an apartment room name!";
+            return;
+        }
+
+        isSubmittingMandatory = true;
+        mandatoryModalError = string.Empty;
+
+        try
+        {
+            int userId = UserSession.CurrentUser?.Id ?? 1;
+            var createdRoom = await UsersClient.CreateApartmentAsync(userId, mandatoryRoomName.Trim());
+
+            if (createdRoom != null)
+            {
+                await ApartmentState.LoadAsync(createdRoom.Id);
+                showMandatoryRoomModal = false;
+                await CheckUserApartmentsAndLoadAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            mandatoryModalError = "Failed to create room. Please try again.";
+            Console.WriteLine($"Mandatory room creation error: {ex.Message}");
+        }
+        finally
+        {
+            isSubmittingMandatory = false;
+        }
+    }
+
+    private async Task HandleMandatoryJoinRoom()
+    {
+        if (string.IsNullOrWhiteSpace(mandatoryInviteCode))
+        {
+            mandatoryModalError = "Please enter the invite code!";
+            return;
+        }
+
+        isSubmittingMandatory = true;
+        mandatoryModalError = string.Empty;
+
+        try
+        {
+            int userId = UserSession.CurrentUser?.Id ?? 1;
+            await UsersClient.JoinApartmentAsync(userId, mandatoryInviteCode.Trim().ToUpper());
+
+            var rooms = await UsersClient.GetUserApartmentsAsync(userId);
+            var joinedRoom = rooms?.FirstOrDefault(r => r.InviteCode == mandatoryInviteCode.Trim().ToUpper()) ?? rooms?.LastOrDefault();
+
+            if (joinedRoom != null)
+            {
+                await ApartmentState.LoadAsync(joinedRoom.Id);
+                showMandatoryRoomModal = false;
+                await CheckUserApartmentsAndLoadAsync();
+            }
+            else
+            {
+                mandatoryModalError = "Invalid code or failed to join room!";
+            }
+        }
+        catch (Exception ex)
+        {
+            mandatoryModalError = "Invalid invite code or already joined!";
+            Console.WriteLine($"Mandatory room join error: {ex.Message}");
+        }
+        finally
+        {
+            isSubmittingMandatory = false;
+        }
     }
 
     private RenderFragment RenderChoreCard(ChoreDto chore)
@@ -372,7 +766,14 @@
             _ => "#475569"
         };
 
-        return @<div class="card border shadow-sm rounded-3 p-3 bg-white task-card"
+        int currentUserId = UserSession.CurrentUser?.Id ?? 1;
+        bool isMyChore = chore.UserId == currentUserId;
+        bool shouldHighlight = isHighlightMyChores && isMyChore;
+
+        string highlightStyle = shouldHighlight ? "border: 2px solid #6366f1 !important; box-shadow: 0 0 8px rgba(99, 102, 241, 0.25) !important;" : "";
+
+        return @<div class="card border rounded-3 p-3 bg-white task-card"
+                     style="@highlightStyle"
                      draggable="true"
                      @ondragstart='() => HandleDragStart(chore)'>
             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -397,21 +798,20 @@
     }
 
     .drop-zone {
-        min-height: 600px; 
+        min-height: 550px; 
         height: 100%;
         background-color: transparent;
-        border: none;
         transition: background-color 0.2s ease;
     }
 
     .drop-zone:hover {
-        background-color: rgba(241, 245, 249, 0.6); 
+        background-color: rgba(241, 245, 249, 0.6);
         border-radius: 12px;
     }
 
     .task-card {
         cursor: grab;
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.2s ease;
     }
 
     .task-card:active {
@@ -422,5 +822,9 @@
     .task-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 .5rem 1rem rgba(0,0,0,.08) !important;
+    }
+
+    .transition-all {
+        transition: all 0.2s ease-in-out;
     }
 </style>

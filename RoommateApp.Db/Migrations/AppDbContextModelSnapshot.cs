@@ -67,6 +67,9 @@ namespace RoommateApp.Db.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("ApartmentId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -91,6 +94,8 @@ namespace RoommateApp.Db.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ApartmentId");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("Chores");
@@ -99,6 +104,7 @@ namespace RoommateApp.Db.Migrations
                         new
                         {
                             Id = 1,
+                            ApartmentId = 1,
                             Category = "CLEANING",
                             DueDateText = "Today",
                             Points = 15,
@@ -109,6 +115,7 @@ namespace RoommateApp.Db.Migrations
                         new
                         {
                             Id = 2,
+                            ApartmentId = 1,
                             Category = "MAINTENANCE",
                             DueDateText = "Tomorrow",
                             Points = 25,
@@ -119,6 +126,7 @@ namespace RoommateApp.Db.Migrations
                         new
                         {
                             Id = 3,
+                            ApartmentId = 1,
                             Category = "SHOPPING",
                             DueDateText = "Oct 24",
                             Points = 10,
@@ -129,6 +137,7 @@ namespace RoommateApp.Db.Migrations
                         new
                         {
                             Id = 4,
+                            ApartmentId = 1,
                             Category = "CLEANING",
                             DueDateText = "Oct 25",
                             Points = 5,
@@ -139,6 +148,7 @@ namespace RoommateApp.Db.Migrations
                         new
                         {
                             Id = 5,
+                            ApartmentId = 1,
                             Category = "CLEANING",
                             DueDateText = "Oct 26",
                             Points = 5,
@@ -149,6 +159,7 @@ namespace RoommateApp.Db.Migrations
                         new
                         {
                             Id = 6,
+                            ApartmentId = 1,
                             Category = "CLEANING",
                             DueDateText = "Today",
                             Points = 20,
@@ -159,6 +170,7 @@ namespace RoommateApp.Db.Migrations
                         new
                         {
                             Id = 7,
+                            ApartmentId = 1,
                             Category = "MAINTENANCE",
                             DueDateText = "Tomorrow",
                             Points = 10,
@@ -169,6 +181,7 @@ namespace RoommateApp.Db.Migrations
                         new
                         {
                             Id = 8,
+                            ApartmentId = 1,
                             Category = "SHOPPING",
                             DueDateText = "Oct 24",
                             Points = 10,
@@ -179,6 +192,7 @@ namespace RoommateApp.Db.Migrations
                         new
                         {
                             Id = 9,
+                            ApartmentId = 1,
                             Category = "CLEANING",
                             DueDateText = "Done · Oct 21",
                             Points = 10,
@@ -189,6 +203,7 @@ namespace RoommateApp.Db.Migrations
                         new
                         {
                             Id = 10,
+                            ApartmentId = 1,
                             Category = "CLEANING",
                             DueDateText = "Done · Oct 22",
                             Points = 15,
@@ -199,6 +214,7 @@ namespace RoommateApp.Db.Migrations
                         new
                         {
                             Id = 11,
+                            ApartmentId = 1,
                             Category = "SHOPPING",
                             DueDateText = "Done · Oct 22",
                             Points = 5,
@@ -209,6 +225,7 @@ namespace RoommateApp.Db.Migrations
                         new
                         {
                             Id = 12,
+                            ApartmentId = 1,
                             Category = "MAINTENANCE",
                             DueDateText = "Done · Oct 23",
                             Points = 15,
@@ -306,11 +323,19 @@ namespace RoommateApp.Db.Migrations
 
             modelBuilder.Entity("RoommateApp.Db.Entities.Chore", b =>
                 {
+                    b.HasOne("RoommateApp.Db.Entities.Apartment", "Apartment")
+                        .WithMany()
+                        .HasForeignKey("ApartmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("RoommateApp.Db.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Apartment");
 
                     b.Navigation("User");
                 });

@@ -149,5 +149,36 @@ namespace RoommateApp.Bll.Services
             await _context.SaveChangesAsync();
             return true;
         }
+
+        public async Task<UserDto> GetOrCreateGoogleUserAsync(string email, string name)
+        {
+            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (existingUser != null)
+            {
+                return new UserDto
+                {
+                    Id = existingUser.Id,
+                    Name = existingUser.Name,
+                    Email = existingUser.Email
+                };
+            }
+
+            var newUser = new User
+            {
+                Name = string.IsNullOrWhiteSpace(name) ? email.Split('@')[0] : name,
+                Email = email,
+                Password = "GOOGLE_AUTH_EXTERNAL"
+            };
+
+            _context.Users.Add(newUser);
+            await _context.SaveChangesAsync();
+
+            return new UserDto
+            {
+                Id = newUser.Id,
+                Name = newUser.Name,
+                Email = newUser.Email
+            };
+        }
     }
 }

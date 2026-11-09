@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using RoommateApp.Bll.DTOs;
 using RoommateApp.Bll.Services;
+using Google.Apis.Auth;
+using RoommateApp.Bll.DTOs;
 
 namespace RoommateApp.Web.Controllers
 {
@@ -65,6 +67,29 @@ namespace RoommateApp.Web.Controllers
             var success = await _userService.RemoveUserFromApartmentAsync(userId, apartmentId);
             if (!success) return NotFound();
             return Ok();
+        }
+
+        [HttpPost("google-login")]
+        public async Task<ActionResult<UserDto>> GoogleLogin([FromBody] GoogleLoginDto dto)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(dto?.IdToken))
+                {
+                    return BadRequest(new { message = "Hiányzó Google ID Token." });
+                }
+
+                var settings = new GoogleJsonWebSignature.ValidationSettings();
+                var payload = await GoogleJsonWebSignature.ValidateAsync(dto.IdToken, settings);
+
+                var user = await _userService.GetOrCreateGoogleUserAsync(payload.Email, payload.Name);
+                return Ok(user);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Google Auth Hiba a szerveren: {ex.Message}");
+                return BadRequest(new { message = $"Érvénytelen Google token: {ex.Message}" });
+            }
         }
     }
 }

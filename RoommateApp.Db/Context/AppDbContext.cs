@@ -44,24 +44,24 @@ namespace RoommateApp.Db.Context
 
             // Feladatok (Chores) kezdőadatai az adatbázisban
             modelBuilder.Entity<Chore>().HasData(
-                // To Do
-                new Chore { Id = 1, Title = "Vacuum living room rug & hallway", Category = "CLEANING", Points = 15, Status = "ToDo", DueDateText = "Today", UserId = 1 },
-                new Chore { Id = 2, Title = "Fix leaky master bath faucet", Category = "MAINTENANCE", Points = 25, Status = "ToDo", DueDateText = "Tomorrow", UserId = 2 },
-                new Chore { Id = 3, Title = "Buy groceries (milk, eggs, fruit)", Category = "SHOPPING", Points = 10, Status = "ToDo", DueDateText = "Oct 24", UserId = 3 },
-                new Chore { Id = 4, Title = "Wipe down all kitchen counters", Category = "CLEANING", Points = 5, Status = "ToDo", DueDateText = "Oct 25", UserId = 2 },
-                new Chore { Id = 5, Title = "Dust bookshelves and tv stand", Category = "CLEANING", Points = 5, Status = "ToDo", DueDateText = "Oct 26", UserId = 1 },
+    // To Do
+    new Chore { Id = 1, Title = "Vacuum living room rug & hallway", Category = "CLEANING", Points = 15, Status = "ToDo", DueDateText = "Today", UserId = 1, ApartmentId = 1 },
+    new Chore { Id = 2, Title = "Fix leaky master bath faucet", Category = "MAINTENANCE", Points = 25, Status = "ToDo", DueDateText = "Tomorrow", UserId = 2, ApartmentId = 1 },
+    new Chore { Id = 3, Title = "Buy groceries (milk, eggs, fruit)", Category = "SHOPPING", Points = 10, Status = "ToDo", DueDateText = "Oct 24", UserId = 3, ApartmentId = 1 },
+    new Chore { Id = 4, Title = "Wipe down all kitchen counters", Category = "CLEANING", Points = 5, Status = "ToDo", DueDateText = "Oct 25", UserId = 2, ApartmentId = 1 },
+    new Chore { Id = 5, Title = "Dust bookshelves and tv stand", Category = "CLEANING", Points = 5, Status = "ToDo", DueDateText = "Oct 26", UserId = 1, ApartmentId = 1 },
 
-                // In Progress
-                new Chore { Id = 6, Title = "Deep clean kitchen oven & stove", Category = "CLEANING", Points = 20, Status = "InProgress", DueDateText = "Today", UserId = 1 },
-                new Chore { Id = 7, Title = "Replace hallway ceiling bulb", Category = "MAINTENANCE", Points = 10, Status = "InProgress", DueDateText = "Tomorrow", UserId = 2 },
-                new Chore { Id = 8, Title = "Pick up toilet paper and laundry soap", Category = "SHOPPING", Points = 10, Status = "InProgress", DueDateText = "Oct 24", UserId = 3 },
+    // In Progress
+    new Chore { Id = 6, Title = "Deep clean kitchen oven & stove", Category = "CLEANING", Points = 20, Status = "InProgress", DueDateText = "Today", UserId = 1, ApartmentId = 1 },
+    new Chore { Id = 7, Title = "Replace hallway ceiling bulb", Category = "MAINTENANCE", Points = 10, Status = "InProgress", DueDateText = "Tomorrow", UserId = 2, ApartmentId = 1 },
+    new Chore { Id = 8, Title = "Pick up toilet paper and laundry soap", Category = "SHOPPING", Points = 10, Status = "InProgress", DueDateText = "Oct 24", UserId = 3, ApartmentId = 1 },
 
-                // Done
-                new Chore { Id = 9, Title = "Take out trash & recycling bins", Category = "CLEANING", Points = 10, Status = "Done", DueDateText = "Done · Oct 21", UserId = 3 },
-                new Chore { Id = 10, Title = "Mop the kitchen tile floors", Category = "CLEANING", Points = 15, Status = "Done", DueDateText = "Done · Oct 22", UserId = 2 },
-                new Chore { Id = 11, Title = "Restock dish soap and hand sanitizer", Category = "SHOPPING", Points = 5, Status = "Done", DueDateText = "Done · Oct 22", UserId = 2 },
-                new Chore { Id = 12, Title = "Tighten loose kitchen cabinet hinge", Category = "MAINTENANCE", Points = 15, Status = "Done", DueDateText = "Done · Oct 23", UserId = 1 }
-            );
+    // Done
+    new Chore { Id = 9, Title = "Take out trash & recycling bins", Category = "CLEANING", Points = 10, Status = "Done", DueDateText = "Done · Oct 21", UserId = 3, ApartmentId = 1 },
+    new Chore { Id = 10, Title = "Mop the kitchen tile floors", Category = "CLEANING", Points = 15, Status = "Done", DueDateText = "Done · Oct 22", UserId = 2, ApartmentId = 1 },
+    new Chore { Id = 11, Title = "Restock dish soap and hand sanitizer", Category = "SHOPPING", Points = 5, Status = "Done", DueDateText = "Done · Oct 22", UserId = 2, ApartmentId = 1 },
+    new Chore { Id = 12, Title = "Tighten loose kitchen cabinet hinge", Category = "MAINTENANCE", Points = 15, Status = "Done", DueDateText = "Done · Oct 23", UserId = 1, ApartmentId = 1 }
+);
 
             modelBuilder.Entity<UserApartment>().HasData(
             new UserApartment { UserId = 1, ApartmentId = 1, IsAdmin = true },  // Kovács Péter (Admin)
