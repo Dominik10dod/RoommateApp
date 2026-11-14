@@ -14,6 +14,8 @@ namespace RoommateApp.Db.Context
 
         public DbSet<UserApartment> UserApartments { get; set; } = null!;
 
+        public DbSet<ApartmentCategory> ApartmentCategories { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {  
             base.OnModelCreating(modelBuilder);

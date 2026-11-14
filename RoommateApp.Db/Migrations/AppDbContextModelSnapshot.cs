@@ -59,6 +59,32 @@ namespace RoommateApp.Db.Migrations
                         });
                 });
 
+            modelBuilder.Entity("RoommateApp.Db.Entities.ApartmentCategory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ApartmentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ColorHex")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApartmentId");
+
+                    b.ToTable("ApartmentCategories");
+                });
+
             modelBuilder.Entity("RoommateApp.Db.Entities.Chore", b =>
                 {
                     b.Property<int>("Id")
@@ -319,6 +345,17 @@ namespace RoommateApp.Db.Migrations
                             ApartmentId = 1,
                             IsAdmin = false
                         });
+                });
+
+            modelBuilder.Entity("RoommateApp.Db.Entities.ApartmentCategory", b =>
+                {
+                    b.HasOne("RoommateApp.Db.Entities.Apartment", "Apartment")
+                        .WithMany()
+                        .HasForeignKey("ApartmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Apartment");
                 });
 
             modelBuilder.Entity("RoommateApp.Db.Entities.Chore", b =>

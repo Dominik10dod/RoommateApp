@@ -5,6 +5,7 @@
 @using RoommateApp.Web.Client.Services
 @using System.Globalization
 @using Microsoft.AspNetCore.Components.Web
+@using System.Net.Http.Json
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject ChoresClient ChoresClient
 @inject UsersClient UsersClient
@@ -25,11 +26,11 @@
             <p class="text-muted small m-0">Drag cards to update state. Complete chores to earn points!</p>
         </div>
         <div class="d-flex gap-2">
-            <!-- Highlight My Chores Button -->
+            <!-- Filter My Chores Button -->
             <button class="btn btn-sm border rounded-2 px-3 transition-all @(isHighlightMyChores ? "btn-primary text-white shadow-sm" : "btn-white bg-white text-secondary")"
                     @onclick="TogglePersonFilter">
                 <RadzenIcon Icon="person" Style="font-size: 0.9rem;" class="me-1" />
-                @(isHighlightMyChores ? "My Chores Highlighted" : "Highlight My Chores")
+                @(isHighlightMyChores ? "My Chores Only" : "Filter My Chores")
             </button>
 
             <!-- Show / Hide Panel Button -->
@@ -356,6 +357,27 @@
         await CheckUserApartmentsAndLoadAsync();
     }
 
+    private List<CategoryItem> roomCategories = new();
+
+    private async Task LoadRoomCategoriesAsync()
+    {
+        if (ApartmentState.Id <= 0) return;
+
+        try
+        {
+            using var http = new HttpClient { BaseAddress = new Uri(Navigation.BaseUri) };
+            var cats = await http.GetFromJsonAsync<List<CategoryItem>>($"api/Apartment/{ApartmentState.Id}/categories");
+            if (cats != null)
+            {
+                roomCategories = cats;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading categories on board: {ex.Message}");
+        }
+    }
+
     private async Task CheckUserApartmentsAndLoadAsync()
     {
         isLoading = true;
@@ -398,6 +420,8 @@
             if (ApartmentState.Id > 0)
             {
                 await LoadColumnsAsync();
+                await LoadRoomCategoriesAsync(); // <-- Ez frissíti a kategóriákat és színeket
+
                 var chores = await ChoresClient.GetChoresByApartmentAsync(ApartmentState.Id);
                 var users = await UsersClient.GetUsersByApartmentAsync(ApartmentState.Id);
 
@@ -544,7 +568,15 @@
 
     private List<ChoreDto> GetChoresForColumn(string columnId)
     {
-        return allChores.Where(c => c.Status == columnId).ToList();
+        var query = allChores.Where(c => c.Status == columnId);
+
+        if (isHighlightMyChores)
+        {
+            int currentUserId = UserSession.CurrentUser?.Id ?? 1;
+            query = query.Where(c => c.UserId == currentUserId);
+        }
+
+        return query.ToList();
     }
 
     private void HandleDragStart(ChoreDto chore)
@@ -749,47 +781,43 @@
     }
 
     private RenderFragment RenderChoreCard(ChoreDto chore)
+{
+    var customCat = roomCategories.FirstOrDefault(c =>
+        c.Name.Equals(chore.Category, StringComparison.OrdinalIgnoreCase));
+
+    string categoryColor = customCat?.ColorHex ?? chore.Category?.ToUpperInvariant() switch
     {
-        string categoryBg = chore.Category switch
-        {
-            "CLEANING" => "#dcfce7",
-            "MAINTENANCE" => "#ffe4e6",
-            "SHOPPING" => "#fef9c3",
-            _ => "#e2e8f0"
-        };
+        "CLEANING" => "#15803d",
+        "MAINTENANCE" => "#be123c",
+        "SHOPPING" => "#a16207",
+        _ => "#6366f1"
+    };
 
-        string categoryColor = chore.Category switch
-        {
-            "CLEANING" => "#15803d",
-            "MAINTENANCE" => "#be123c",
-            "SHOPPING" => "#a16207",
-            _ => "#475569"
-        };
+    string categoryBg = chore.Category?.ToUpperInvariant() switch
+    {
+        "CLEANING" => "#dcfce7",
+        "MAINTENANCE" => "#ffe4e6",
+        "SHOPPING" => "#fef9c3",
+        _ => $"{categoryColor}22"
+    };
 
-        int currentUserId = UserSession.CurrentUser?.Id ?? 1;
-        bool isMyChore = chore.UserId == currentUserId;
-        bool shouldHighlight = isHighlightMyChores && isMyChore;
-
-        string highlightStyle = shouldHighlight ? "border: 2px solid #6366f1 !important; box-shadow: 0 0 8px rgba(99, 102, 241, 0.25) !important;" : "";
-
-        return @<div class="card border rounded-3 p-3 bg-white task-card"
-                     style="@highlightStyle"
-                     draggable="true"
-                     @ondragstart='() => HandleDragStart(chore)'>
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="fw-bold px-2 py-1 rounded" style="font-size: 0.65rem; background-color: @categoryBg; color: @categoryColor; letter-spacing: 0.5px;">@chore.Category</span>
-                <span class="fw-bold px-2 py-1 rounded-pill" style="font-size: 0.75rem; background-color: #fef9c3; color: #a16207;">⭐ +@chore.Points pts</span>
+    return @<div class="card border rounded-3 p-3 bg-white task-card"
+                 draggable="true"
+                 @ondragstart='() => HandleDragStart(chore)'>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-bold px-2 py-1 rounded" style="font-size: 0.65rem; background-color: @categoryBg; color: @categoryColor; letter-spacing: 0.5px;">@chore.Category</span>
+            <span class="fw-bold px-2 py-1 rounded-pill" style="font-size: 0.75rem; background-color: #fef9c3; color: #a16207;">⭐ +@chore.Points pts</span>
+        </div>
+        <p class="fw-bold text-dark m-0 mb-3 small">@chore.Title</p>
+        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+            <div class="d-flex align-items-center gap-1 text-muted extra-small">
+                <RadzenIcon Icon="calendar_today" Style="font-size: 0.85rem;" />
+                <span>@chore.DueDateText</span>
             </div>
-            <p class="fw-bold text-dark m-0 mb-3 small">@chore.Title</p>
-            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                <div class="d-flex align-items-center gap-1 text-muted extra-small">
-                    <RadzenIcon Icon="calendar_today" Style="font-size: 0.85rem;" />
-                    <span>@chore.DueDateText</span>
-                </div>
-                <RadzenAvatar Image="@chore.UserAvatarUrl" Size="AvatarSize.ExtraSmall" class="rounded-circle" />
-            </div>
-        </div>;
-    }
+            <RadzenAvatar Image="@chore.UserAvatarUrl" Size="AvatarSize.ExtraSmall" class="rounded-circle" />
+        </div>
+    </div>;
+}
 }
 
 <style>

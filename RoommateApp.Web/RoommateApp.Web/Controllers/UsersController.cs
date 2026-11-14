@@ -91,5 +91,13 @@ namespace RoommateApp.Web.Controllers
                 return BadRequest(new { message = $"Érvénytelen Google token: {ex.Message}" });
             }
         }
+
+        [HttpDelete("apartment/{apartmentId}/user/{userId}")]
+        public async Task<IActionResult> RemoveUserFromApartment(int apartmentId, int userId)
+        {
+            var success = await _userService.RemoveUserFromApartmentAsync(apartmentId, userId);
+            if (!success) return NotFound();
+            return NoContent();
+        }
     }
 }

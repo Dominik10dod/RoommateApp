@@ -41,5 +41,22 @@ namespace RoommateApp.Web.Controllers
             if (!success) return NotFound("A megadott szoba nem található.");
             return NoContent();
         }
+
+        [HttpGet("{id}/categories")]
+        public async Task<ActionResult<List<CategoryDto>>> GetApartmentCategories(int id)
+        {
+            var categories = await _apartmentService.GetCategoriesByApartmentAsync(id);
+            return Ok(categories);
+        }
+
+        [HttpPost("{id}/categories")]
+        public async Task<ActionResult<CategoryDto>> AddApartmentCategory(int id, [FromBody] CategoryDto dto)
+        {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.Name))
+                return BadRequest("A kategória neve nem lehet üres.");
+
+            var saved = await _apartmentService.AddCategoryToApartmentAsync(id, dto);
+            return Ok(saved);
+        }
     }
 }

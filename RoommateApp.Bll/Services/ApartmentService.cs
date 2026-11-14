@@ -94,8 +94,81 @@ namespace RoommateApp.Bll.Services
             _context.UserApartments.RemoveRange(apartment.UserApartments);
             _context.Apartments.Remove(apartment);
 
+            _context.ApartmentCategories.RemoveRange(_context.ApartmentCategories.Where(c => c.ApartmentId == id));
+
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        // Szobához tartozó kategóriák lekérése (alapértelmezett + adatbázisba mentett egyedi kategóriák)
+        public async Task<List<CategoryDto>> GetCategoriesByApartmentAsync(int apartmentId)
+        {
+            var categories = new List<CategoryDto>
+    {
+        new() { Name = "CLEANING", ColorHex = "#15803d" },
+        new() { Name = "MAINTENANCE", ColorHex = "#be123c" },
+        new() { Name = "SHOPPING", ColorHex = "#a16207" }
+    };
+
+            var customCategories = await _context.ApartmentCategories
+                .Where(c => c.ApartmentId == apartmentId)
+                .OrderBy(c => c.Id)
+                .ToListAsync();
+
+            foreach (var cat in customCategories)
+            {
+                if (!categories.Any(c => c.Name.Equals(cat.Name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    categories.Add(new CategoryDto
+                    {
+                        Name = cat.Name.ToUpperInvariant(),
+                        ColorHex = string.IsNullOrWhiteSpace(cat.ColorHex) ? "#6366f1" : cat.ColorHex
+                    });
+                }
+            }
+
+            return categories;
+        }
+
+        public async Task<CategoryDto?> AddCategoryToApartmentAsync(int apartmentId, CategoryDto dto)
+        {
+            var normalized = dto.Name.Trim().ToUpperInvariant();
+            if (string.IsNullOrWhiteSpace(normalized)) return null;
+
+            var color = string.IsNullOrWhiteSpace(dto.ColorHex) ? "#6366f1" : dto.ColorHex.Trim();
+
+            var defaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["CLEANING"] = "#15803d",
+                ["MAINTENANCE"] = "#be123c",
+                ["SHOPPING"] = "#a16207"
+            };
+
+            if (defaults.TryGetValue(normalized, out var defaultColor))
+            {
+                return new CategoryDto { Name = normalized, ColorHex = defaultColor };
+            }
+
+            var existing = await _context.ApartmentCategories
+                .FirstOrDefaultAsync(c => c.ApartmentId == apartmentId && c.Name == normalized);
+
+            if (existing == null)
+            {
+                _context.ApartmentCategories.Add(new ApartmentCategory
+                {
+                    ApartmentId = apartmentId,
+                    Name = normalized,
+                    ColorHex = color
+                });
+                await _context.SaveChangesAsync();
+            }
+            else
+            {
+                existing.ColorHex = color;
+                await _context.SaveChangesAsync();
+            }
+
+            return new CategoryDto { Name = normalized, ColorHex = color };
         }
     }
 }

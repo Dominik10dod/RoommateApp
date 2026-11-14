@@ -13,7 +13,7 @@
 <div class="card border-0 shadow-sm rounded-4 mb-4 p-3 bg-white">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
 
-        <!-- Logo & Szoba név -->
+        <!-- Logo & Room name -->
         <div class="d-flex align-items-center gap-3">
             <div class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
                 <RadzenIcon Icon="check_box" Style="font-size: 1.5rem;" />
@@ -24,13 +24,14 @@
             </div>
         </div>
 
-        <!-- Navigációs gombok -->
+        <!-- Navigation buttons -->
         <div class="bg-light p-1 rounded-pill d-none d-md-flex gap-1">
             <button class="btn btn-sm rounded-pill px-3 @(ActivePage == "Board" ? "btn-primary shadow-sm" : "btn-light text-secondary border-0")"
                     @onclick='() => Navigation.NavigateTo("/")'>
                 Roommate Board
             </button>
-            <button class="btn btn-sm rounded-pill px-3 @(ActivePage == "Stats" ? "btn-primary shadow-sm" : "btn-light text-secondary border-0")">
+            <button class="btn btn-sm rounded-pill px-3 @(ActivePage == "Stats" ? "btn-primary shadow-sm" : "btn-light text-secondary border-0")"
+                    @onclick='() => Navigation.NavigateTo("/stats")'>
                 Stats & Analytics
             </button>
             <button class="btn btn-sm rounded-pill px-3 @(ActivePage == "Controls" ? "btn-primary shadow-sm" : "btn-light text-secondary border-0")"
@@ -39,19 +40,17 @@
             </button>
         </div>
 
-        <!-- Jobb oldali Értesítés, Dinamikus Pontszám & Profil Menü -->
+        <!-- Right-side Notifications, Dynamic Score & Profile Menu -->
         <div class="d-flex align-items-center gap-3">
-            <button class="btn btn-light btn-sm rounded-circle border p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
-                <RadzenIcon Icon="notifications" Style="font-size: 1.2rem; color: #64748b;" />
-            </button>
+            
 
-            <!-- Dinamikus felhasználói pontszám -->
+            <!-- Dynamic user score -->
             <div class="d-flex align-items-center gap-2 px-3 py-1 rounded-pill" style="background-color: #e0e7ff; color: #4338ca;">
                 <RadzenIcon Icon="emoji_events" Style="font-size: 1.2rem; color: #4338ca;" />
                 <span class="fw-bold small">@userPoints pts</span>
             </div>
 
-            <!-- Profilkép és Menü -->
+            <!-- Profile picture and menu -->
             <div class="position-relative">
                 <button class="btn p-0 border-0 bg-transparent" @onclick="ToggleProfileMenu">
                     <img src="@AvatarUrl"
@@ -66,26 +65,26 @@
                          style="width: 260px; z-index: 1050; background-color: #ffffff;">
 
                         <div class="px-3 py-2 border-bottom mb-2">
-                            <div class="fw-bold small text-dark">@(UserSession.CurrentUser?.Name ?? "Vendég")</div>
-                            <div class="text-muted extra-small">@(UserSession.CurrentUser?.Email ?? "Nincs bejelentkezve")</div>
+                            <div class="fw-bold small text-dark">@(UserSession.CurrentUser?.Name ?? "Guest")</div>
+                            <div class="text-muted extra-small">@(UserSession.CurrentUser?.Email ?? "Not signed in")</div>
                         </div>
 
-                        <!-- Új Szoba Létrehozása -->
+                        <!-- Create a new room -->
                         <button class="dropdown-item rounded-3 py-2 extra-small d-flex align-items-center gap-2 mb-1" @onclick="OpenCreateRoomModal">
                             <RadzenIcon Icon="add_circle_outline" Style="font-size: 1.1rem; color: #6366f1;" />
-                            <span class="fw-semibold text-dark">Új szoba létrehozása</span>
+                            <span class="fw-semibold text-dark">Create a new room</span>
                         </button>
 
-                        <!-- ÚJ: Csatlakozás Szobához Kód Alapján -->
+                        <!-- NEW: Join a room by code -->
                         <button class="dropdown-item rounded-3 py-2 extra-small d-flex align-items-center gap-2" @onclick="OpenJoinRoomModal">
                             <RadzenIcon Icon="group_add" Style="font-size: 1.1rem; color: #10b981;" />
-                            <span class="fw-semibold text-dark">Csatlakozás szobához</span>
+                            <span class="fw-semibold text-dark">Join a room</span>
                         </button>
 
                         <div class="dropdown-divider my-2"></div>
 
-                        <!-- Szobák listázása a profil menüben -->
-                        <div class="px-3 py-1 text-uppercase text-muted extra-small fw-bold">Szobáid</div>
+                        <!-- List rooms in the profile menu -->
+                        <div class="px-3 py-1 text-uppercase text-muted extra-small fw-bold">Your rooms</div>
                         @foreach (var room in myRooms)
                         {
                             <button class="dropdown-item rounded-3 py-2 extra-small d-flex justify-content-between align-items-center mb-1 @(room.Id == ApartmentState.Id ? "bg-primary-subtle text-primary fw-bold" : "text-secondary")"
@@ -105,7 +104,7 @@
 
                         <button class="dropdown-item rounded-3 py-2 extra-small text-danger d-flex align-items-center gap-2" @onclick="Logout">
                             <RadzenIcon Icon="logout" Style="font-size: 1.1rem; color: #ef4444;" />
-                            <span class="fw-bold">Kijelentkezés</span>
+                            <span class="fw-bold">Sign out</span>
                         </button>
                     </div>
                 }
@@ -114,28 +113,28 @@
     </div>
 </div>
 
-<!-- Új Szoba Létrehozása Modál -->
+<!-- Create a new room modal -->
 @if (showCreateRoomModal)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg rounded-4 p-4 bg-white">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="modal-title fw-bold text-dark">Új szoba létrehozása</h5>
+                    <h5 class="modal-title fw-bold text-dark">Create a new room</h5>
                     <button type="button" class="btn-close" @onclick="CloseCreateRoomModal"></button>
                 </div>
                 <div class="modal-body py-2 px-0">
                     <div class="mb-3">
-                        <label class="form-label extra-small fw-bold text-secondary">Szoba / Lakás neve</label>
+                        <label class="form-label extra-small fw-bold text-secondary">Room / Apartment name</label>
                         <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle"
-                               placeholder="pl. Apartment 5C vagy Budapesti Kuckó" @bind="newRoomNameInput" />
+                               placeholder="e.g. Apartment 5C or Budapest Hideaway" @bind="newRoomNameInput" />
                     </div>
                 </div>
                 <div class="d-flex justify-content-end gap-2 pt-2">
-                    <button class="btn btn-light btn-sm rounded-pill px-3 extra-small" @onclick="CloseCreateRoomModal">Mégse</button>
+                    <button class="btn btn-light btn-sm rounded-pill px-3 extra-small" @onclick="CloseCreateRoomModal">Cancel</button>
                     <button class="btn btn-primary btn-sm rounded-pill px-4 extra-small fw-bold"
                             style="background-color: #6366f1; border: none;" @onclick="CreateNewRoom">
-                        Létrehozás
+                        Create
                     </button>
                 </div>
             </div>
@@ -143,14 +142,14 @@
     </div>
 }
 
-<!-- ÚJ: Csatlakozás Szobához Modál -->
+<!-- NEW: Join a room modal -->
 @if (showJoinRoomModal)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg rounded-4 p-4 bg-white">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="modal-title fw-bold text-dark">Csatlakozás szobához</h5>
+                    <h5 class="modal-title fw-bold text-dark">Join a room</h5>
                     <button type="button" class="btn-close" @onclick="CloseJoinRoomModal"></button>
                 </div>
                 <div class="modal-body py-2 px-0">
@@ -160,17 +159,17 @@
                     }
 
                     <div class="mb-3">
-                        <label class="form-label extra-small fw-bold text-secondary">Meghívó kód</label>
+                        <label class="form-label extra-small fw-bold text-secondary">Invite code</label>
                         <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle text-uppercase"
                                placeholder="pl. APT4B-8X92" @bind="joinInviteCodeInput" />
-                        <span class="text-muted extra-small mt-1 d-block">Kérd el a szoba adminjától az 8 karakteres meghívó kódot.</span>
+                         <span class="text-muted extra-small mt-1 d-block">Ask the room admin for the 8-character invite code.</span>
                     </div>
                 </div>
                 <div class="d-flex justify-content-end gap-2 pt-2">
-                    <button class="btn btn-light btn-sm rounded-pill px-3 extra-small" @onclick="CloseJoinRoomModal">Mégse</button>
+                    <button class="btn btn-light btn-sm rounded-pill px-3 extra-small" @onclick="CloseJoinRoomModal">Cancel</button>
                     <button class="btn btn-success btn-sm rounded-pill px-4 extra-small fw-bold"
                             style="background-color: #10b981; border: none;" @onclick="JoinRoomByCode">
-                        Csatlakozás
+                        Joining
                     </button>
                 </div>
             </div>
@@ -227,7 +226,7 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Hiba a szobák betöltésekor: {ex.Message}");
+            Console.WriteLine($"Error while loading apartments: {ex.Message}");
         }
     }
 
@@ -247,11 +246,11 @@
             }
 
             CloseCreateRoomModal();
-            Navigation.NavigateTo("/", forceLoad: false); // JAVÍTVA: Nem tölti újra a böngészőt, megmarad a session!
+            Navigation.NavigateTo("/", forceLoad: false); // FIXED: Does not reload the browser, so the session is preserved!
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Hiba a szoba létrehozásakor: {ex.Message}");
+            Console.WriteLine($"Error while creating apartment: {ex.Message}");
         }
     }
 
@@ -267,7 +266,7 @@
             await UsersClient.JoinApartmentAsync(userId, joinInviteCodeInput.Trim().ToUpper());
             await LoadUserApartments();
 
-            // Átváltunk a frissen csatlakozott szobára
+             // Switch to the newly joined room
             var joinedRoom = myRooms.FirstOrDefault(r => r.InviteCode == joinInviteCodeInput.Trim().ToUpper());
             if (joinedRoom != null)
             {
@@ -279,8 +278,8 @@
         }
         catch (Exception ex)
         {
-            joinRoomErrorMessage = "Érvénytelen meghívó kód vagy már csatlakoztál ehhez a szobához!";
-            Console.WriteLine($"Hiba a szobához csatlakozáskor: {ex.Message}");
+            joinRoomErrorMessage = "Invalid invite code or you have already joined this apartment!";
+            Console.WriteLine($"Error while joining apartment: {ex.Message}");
         }
     }
 
@@ -292,7 +291,7 @@
         {
             await ApartmentState.LoadAsync(room.Id);
             await CalculateUserPoints();
-            Navigation.NavigateTo("/", forceLoad: false); // JAVÍTVA: Nem tölti újra a böngészőt!
+             Navigation.NavigateTo("/", forceLoad: false); // FIXED: Does not reload the browser!
         }
     }
 
@@ -312,7 +311,7 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Hiba a pontszám kiszámításakor: {ex.Message}");
+                Console.WriteLine($"Error while calculating user points: {ex.Message}");
             }
         }
     }

@@ -1,0 +1,749 @@
+﻿@page "/stats"
+@page "/analytics"
+@using Radzen
+@using Radzen.Blazor
+@using RoommateApp.Web.Client
+@using RoommateApp.Web.Client.Services
+@using System.Globalization
+@using System.Net.Http.Json
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inject ChoresClient ChoresClient
+@inject UsersClient UsersClient
+@inject ApartmentStateService ApartmentState
+@inject UserSessionService UserSession
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<div class="p-3 p-md-4">
+    <!-- Header Component -->
+    <AppHeader ActivePage="Stats" />
+
+    <!-- Subheader -->
+    <div class="mb-4">
+        <h2 class="h3 fw-bold m-0 text-dark">Stats & Household Analytics</h2>
+        <p class="text-muted small m-0 mt-1">Analyze points progress, distribution of chores, and weekly top performance benchmarks.</p>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex align-items-center justify-content-center p-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading analytics...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Top Row: 4 KPI Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card border shadow-none rounded-4 p-3 p-md-4 bg-white h-100 analytics-card">
+                    <span class="text-uppercase text-muted fw-bold kpi-label">AVG CHORES / WEEK</span>
+                    <div class="h3 fw-bold text-dark m-0 mt-2">
+                        @avgChoresPerWeek.ToString("0.#", CultureInfo.InvariantCulture) <span class="fs-4 fw-bold">chores</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card border shadow-none rounded-4 p-3 p-md-4 bg-white h-100 analytics-card">
+                    <span class="text-uppercase text-muted fw-bold kpi-label">AVG POINTS / PERSON</span>
+                    <div class="h3 fw-bold text-dark m-0 mt-2">
+                        @avgPointsPerPerson.ToString("N0", CultureInfo.InvariantCulture) <span class="fs-4 fw-bold">pts</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card border shadow-none rounded-4 p-3 p-md-4 bg-white h-100 analytics-card">
+                    <span class="text-uppercase text-muted fw-bold kpi-label">MONTHLY COMPLETION</span>
+                    <div class="h3 fw-bold text-dark m-0 mt-2">
+                        @monthlyCompletionRate.ToString("0.#", CultureInfo.InvariantCulture)%
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card border shadow-none rounded-4 p-3 p-md-4 bg-white h-100 analytics-card">
+                    <span class="text-uppercase text-muted fw-bold kpi-label">TOP CATEGORY</span>
+                    <div class="h3 fw-bold text-dark m-0 mt-2">
+                        @topCategoryName
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Row: Left Stacked Bar Chart & Right Donut + Hall of Fame -->
+        <div class="row g-4 align-items-stretch">
+            <!-- Left 8 Columns: Roommate Weekly Performance -->
+            <div class="col-lg-8">
+                <div class="card border shadow-none rounded-4 p-4 bg-white h-100 analytics-card d-flex flex-column justify-content-between">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+                        <h3 class="h6 fw-bold m-0 text-dark">Roommate Weekly Performance</h3>
+
+                        <!-- Dynamic Roommate Legend -->
+                        <div class="d-flex flex-wrap align-items-center gap-3">
+                            @foreach (var user in allUsers)
+                            {
+                                <div class="d-flex align-items-center gap-1">
+                                    <span class="legend-dot" style="background-color: @GetUserColor(user.Id);"></span>
+                                    <span class="extra-small fw-semibold text-secondary">@user.Name</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Stacked Bar Chart Area -->
+                    <div class="d-flex align-items-end justify-content-around pt-3 pb-1 px-2 flex-grow-1" style="min-height: 270px;">
+                        @foreach (var week in weeklyPerformance)
+                        {
+                            <div class="d-flex flex-column align-items-center flex-fill" style="max-width: 80px;">
+                                <div class="d-flex flex-column-reverse justify-content-start align-items-center w-100" style="height: 220px;">
+                                    @if (week.TotalPoints > 0 && maxWeeklyPoints > 0)
+                                    {
+                                        @foreach (var seg in week.UserSegments)
+                                        {
+                                            if (seg.Points > 0)
+                                            {
+                                                double heightPercent = (seg.Points * 100.0) / maxWeeklyPoints;
+                                                <div class="stacked-bar-segment"
+                                                     style="height: @(heightPercent.ToString("0.##", CultureInfo.InvariantCulture))%; background-color: @seg.Color;"
+                                                     title="@($"{seg.UserName}: {seg.Points} pts ({week.Label})")">
+                                                </div>
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="empty-bar-placeholder" title="@($"{week.Label}: 0 pts")"></div>
+                                    }
+                                </div>
+                                <span class="extra-small text-muted fw-semibold mt-3">@week.Label</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right 4 Columns: Chore Category Share & Weekly Hall of Fame -->
+            <div class="col-lg-4 d-flex flex-column gap-4">
+
+                <!-- Card 1: Chore Category Share -->
+                <div class="card border shadow-none rounded-4 p-4 bg-white analytics-card">
+                    <h3 class="h6 fw-bold m-0 text-dark mb-4">Chore Category Share</h3>
+
+                    <div class="d-flex align-items-center justify-content-between gap-3">
+                        <!-- Donut Chart -->
+                        <div class="donut-chart flex-shrink-0" style="background: @donutGradientCss;">
+                            <div class="donut-hole"></div>
+                        </div>
+
+                        <!-- Category Legend -->
+                        <div class="d-flex flex-column gap-2 flex-grow-1 ps-2">
+                            @foreach (var cat in categoryShares)
+                            {
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="legend-dot" style="background-color: @cat.Color;"></span>
+                                        <span class="extra-small fw-semibold text-secondary">@cat.DisplayName</span>
+                                    </div>
+                                    <span class="extra-small fw-bold text-dark">@cat.Percentage%</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Weekly Hall of Fame -->
+                <div class="card border shadow-none rounded-4 p-4 bg-white analytics-card flex-grow-1">
+                    <h3 class="h6 fw-bold m-0 text-dark mb-3">Weekly Hall of Fame 🏆</h3>
+
+                    @if (!hallOfFameEntries.Any())
+                    {
+                        <div class="d-flex align-items-center justify-content-center py-4">
+                            <p class="text-muted extra-small m-0 text-center">Complete chores to unlock Weekly Hall of Fame records!</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-column">
+                            @for (int i = 0; i < hallOfFameEntries.Count; i++)
+                            {
+                                var entry = hallOfFameEntries[i];
+                                bool isLast = i == hallOfFameEntries.Count - 1;
+
+                                <div class="d-flex justify-content-between align-items-center py-2 @(isLast ? "" : "border-bottom border-light-subtle")">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <img src="@($"https://api.dicebear.com/7.x/identicon/svg?seed={entry.UserId}")"
+                                             alt="@entry.UserName"
+                                             class="rounded-circle"
+                                             style="width: 34px; height: 34px; object-fit: cover; background-color: #f1f5f9;" />
+                                        <div>
+                                            <div class="fw-bold text-dark extra-small">@entry.UserName</div>
+                                            <div class="text-muted" style="font-size: 0.7rem;">@entry.WeekTitle</div>
+                                        </div>
+                                    </div>
+                                    <span class="fw-bold extra-small" style="color: #6366f1;">
+                                        @entry.Points.ToString("N0", CultureInfo.InvariantCulture) pts
+                                    </span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+
+    private List<ChoreDto> allChores = new();
+    private List<UserDto> allUsers = new();
+    private List<CategoryItem> roomCategories = new();
+
+    // KPI Metrics
+    private double avgChoresPerWeek = 0;
+    private int avgPointsPerPerson = 0;
+    private double monthlyCompletionRate = 0;
+    private string topCategoryName = "None";
+
+    // Weekly Performance Chart Data
+    private List<WeekPerformanceModel> weeklyPerformance = new();
+    private int maxWeeklyPoints = 1;
+
+    // Category Share Donut Data
+    private List<CategoryShareModel> categoryShares = new();
+    private string donutGradientCss = "conic-gradient(#e2e8f0 0% 100%)";
+
+    // Hall of Fame Data
+    private List<HallOfFameModel> hallOfFameEntries = new();
+
+    // Color Palette for users
+    private readonly string[] roommatePalette = new[]
+    {
+        "#6366f1", // Indigo / Slate Blue
+        "#2e6f56", // Forest Green
+        "#e0b03b", // Mustard Gold
+        "#ec4899", // Rose
+        "#0ea5e9", // Sky Blue
+        "#f97316"  // Orange
+    };
+
+    public class WeekPerformanceModel
+    {
+        public string Label { get; set; } = string.Empty;
+        public DateTime WeekStart { get; set; }
+        public int TotalPoints => UserSegments.Sum(s => s.Points);
+        public List<UserWeekSegment> UserSegments { get; set; } = new();
+    }
+
+    public class UserWeekSegment
+    {
+        public int UserId { get; set; }
+        public string UserName { get; set; } = string.Empty;
+        public string Color { get; set; } = string.Empty;
+        public int Points { get; set; }
+    }
+
+    public class CategoryShareModel
+    {
+        public string Key { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string Color { get; set; } = string.Empty;
+        public int Count { get; set; }
+        public int Percentage { get; set; }
+    }
+
+    public class HallOfFameModel
+    {
+        public int UserId { get; set; }
+        public string UserName { get; set; } = string.Empty;
+        public string WeekTitle { get; set; } = string.Empty;
+        public DateTime WeekStart { get; set; }
+        public int Points { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!UserSession.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        ApartmentState.OnChange += OnApartmentChanged;
+        await LoadAndCalculateAnalyticsAsync();
+    }
+
+    private async Task LoadAndCalculateAnalyticsAsync()
+    {
+        isLoading = true;
+        try
+        {
+            int currentUserId = UserSession.CurrentUser?.Id ?? 1;
+
+            if (ApartmentState.Id == 0)
+            {
+                var rooms = await UsersClient.GetUserApartmentsAsync(currentUserId);
+                if (rooms != null && rooms.Any())
+                {
+                    await ApartmentState.LoadAsync(rooms.First().Id);
+                }
+            }
+
+            if (ApartmentState.Id > 0)
+            {
+                await LoadRoomCategoriesAsync();
+
+                var chores = await ChoresClient.GetChoresByApartmentAsync(ApartmentState.Id);
+                var users = await UsersClient.GetUsersByApartmentAsync(ApartmentState.Id);
+
+                allChores = chores?.ToList() ?? new List<ChoreDto>();
+                allUsers = users?.ToList() ?? new List<UserDto>();
+
+                CalculateAllMetrics();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading analytics data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadRoomCategoriesAsync()
+    {
+        if (ApartmentState.Id <= 0) return;
+
+        try
+        {
+            using var http = new HttpClient { BaseAddress = new Uri(Navigation.BaseUri) };
+            var cats = await http.GetFromJsonAsync<List<CategoryItem>>($"api/Apartment/{ApartmentState.Id}/categories");
+            if (cats != null)
+            {
+                roomCategories = cats;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading categories on analytics: {ex.Message}");
+        }
+    }
+
+    private void CalculateAllMetrics()
+    {
+        var completedChores = allChores
+            .Where(c => string.Equals(c.Status, "Done", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var choreDates = allChores.ToDictionary(c => c.Id, ParseChoreDate);
+
+        // 1. AVG CHORES / WEEK
+        if (completedChores.Any())
+        {
+            var distinctWeeks = completedChores
+                .Select(c => GetStartOfWeek(choreDates[c.Id]))
+                .Distinct()
+                .Count();
+
+            avgChoresPerWeek = (double)completedChores.Count / Math.Max(1, distinctWeeks);
+        }
+        else
+        {
+            avgChoresPerWeek = 0;
+        }
+
+        // 2. AVG POINTS / PERSON
+        int totalEarnedPoints = completedChores.Sum(c => c.Points);
+        int memberCount = Math.Max(1, allUsers.Count);
+        avgPointsPerPerson = (int)Math.Round((double)totalEarnedPoints / memberCount);
+
+        // 3. MONTHLY COMPLETION
+        var thirtyDaysAgo = DateTime.Today.AddDays(-30);
+        var recentChores = allChores
+            .Where(c => choreDates[c.Id] >= thirtyDaysAgo)
+            .ToList();
+
+        var scopeChores = recentChores.Any() ? recentChores : allChores;
+        if (scopeChores.Any())
+        {
+            int doneInScope = scopeChores.Count(c => string.Equals(c.Status, "Done", StringComparison.OrdinalIgnoreCase));
+            monthlyCompletionRate = (doneInScope * 100.0) / scopeChores.Count;
+        }
+        else
+        {
+            monthlyCompletionRate = 0;
+        }
+
+        // 4. TOP CATEGORY
+        var categorySource = completedChores.Any() ? completedChores : allChores;
+        if (categorySource.Any())
+        {
+            var topGroup = categorySource
+                .Where(c => !string.IsNullOrWhiteSpace(c.Category))
+                .GroupBy(c => c.Category.Trim().ToUpperInvariant())
+                .OrderByDescending(g => g.Count())
+                .ThenByDescending(g => g.Sum(c => c.Points))
+                .FirstOrDefault();
+
+            topCategoryName = topGroup != null ? FormatCategoryName(topGroup.Key) : "None";
+        }
+        else
+        {
+            topCategoryName = "None";
+        }
+
+        // 5. ROOMMATE WEEKLY PERFORMANCE
+        BuildWeeklyPerformance(completedChores, choreDates);
+
+        // 6. CHORE CATEGORY SHARE (Donut Chart)
+        BuildCategoryShare(allChores);
+
+        // 7. WEEKLY HALL OF FAME
+        BuildHallOfFame(completedChores, choreDates);
+    }
+
+    private void BuildWeeklyPerformance(List<ChoreDto> completedChores, Dictionary<int, DateTime> choreDates)
+    {
+        weeklyPerformance.Clear();
+        DateTime currentWeekStart = GetStartOfWeek(DateTime.Today);
+
+        var orderedUsersForStack = allUsers.AsEnumerable().Reverse().ToList();
+
+        for (int i = 0; i < 6; i++)
+        {
+            int weeksAgo = 5 - i;
+            DateTime weekStart = currentWeekStart.AddDays(-7 * weeksAgo);
+            DateTime weekEnd = weekStart.AddDays(7);
+
+            var weekChores = completedChores
+                .Where(c => choreDates[c.Id] >= weekStart && choreDates[c.Id] < weekEnd)
+                .ToList();
+
+            var segments = orderedUsersForStack.Select(u => new UserWeekSegment
+            {
+                UserId = u.Id,
+                UserName = u.Name,
+                Color = GetUserColor(u.Id),
+                Points = weekChores.Where(c => c.UserId == u.Id).Sum(c => c.Points)
+            }).ToList();
+
+            weeklyPerformance.Add(new WeekPerformanceModel
+            {
+                Label = $"Wk {i + 1}",
+                WeekStart = weekStart,
+                UserSegments = segments
+            });
+        }
+
+        maxWeeklyPoints = weeklyPerformance.Any()
+            ? Math.Max(1, weeklyPerformance.Max(w => w.TotalPoints))
+            : 1;
+    }
+
+    private void BuildCategoryShare(List<ChoreDto> chores)
+    {
+        var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        // Initialize with all known room categories so they appear even if 0 count
+        foreach (var rc in roomCategories)
+        {
+            counts[rc.Name] = 0;
+        }
+
+        // Ensure default ones exist if not in roomCategories
+        foreach (var def in new[] { "CLEANING", "MAINTENANCE", "SHOPPING" })
+        {
+            if (!counts.ContainsKey(def)) counts[def] = 0;
+        }
+
+        foreach (var chore in chores)
+        {
+            string cat = string.IsNullOrWhiteSpace(chore.Category)
+                ? "OTHER"
+                : chore.Category.Trim().ToUpperInvariant();
+
+            if (!counts.ContainsKey(cat))
+            {
+                counts[cat] = 0;
+            }
+            counts[cat]++;
+        }
+
+        int total = counts.Values.Sum();
+        categoryShares.Clear();
+
+        if (total == 0)
+        {
+            foreach (var kvp in counts)
+            {
+                categoryShares.Add(new CategoryShareModel
+                {
+                    Key = kvp.Key,
+                    DisplayName = FormatCategoryName(kvp.Key),
+                    Color = GetCategoryColor(kvp.Key),
+                    Count = 0,
+                    Percentage = 0
+                });
+            }
+            donutGradientCss = "conic-gradient(#e2e8f0 0% 100%)";
+            return;
+        }
+
+        var rawItems = counts.Select(kvp =>
+        {
+            double exact = (kvp.Value * 100.0) / total;
+            int floored = (int)Math.Floor(exact);
+            return new
+            {
+                Key = kvp.Key,
+                Count = kvp.Value,
+                Floored = floored,
+                Remainder = exact - floored
+            };
+        }).ToList();
+
+        int remainderSum = 100 - rawItems.Sum(x => x.Floored);
+        var adjusted = rawItems
+            .OrderByDescending(x => x.Remainder)
+            .Select((item, idx) => new CategoryShareModel
+            {
+                Key = item.Key,
+                DisplayName = FormatCategoryName(item.Key),
+                Color = GetCategoryColor(item.Key),
+                Count = item.Count,
+                Percentage = item.Floored + (idx < remainderSum ? 1 : 0)
+            })
+            .Where(c => c.Count > 0) // Csak a ténylegesen előfordulókat mutatjuk a fánkdiagramon
+            .ToList();
+
+        categoryShares = adjusted;
+
+        var gradientStops = new List<string>();
+        int cumulative = 0;
+        foreach (var item in categoryShares)
+        {
+            if (item.Percentage > 0)
+            {
+                int start = cumulative;
+                int end = cumulative + item.Percentage;
+                gradientStops.Add($"{item.Color} {start}% {end}%");
+                cumulative = end;
+            }
+        }
+
+        donutGradientCss = gradientStops.Any()
+            ? $"conic-gradient({string.Join(", ", gradientStops)})"
+            : "conic-gradient(#e2e8f0 0% 100%)";
+    }
+
+    private void BuildHallOfFame(List<ChoreDto> completedChores, Dictionary<int, DateTime> choreDates)
+    {
+        hallOfFameEntries.Clear();
+        if (!completedChores.Any()) return;
+
+        var byWeek = completedChores
+            .GroupBy(c => GetStartOfWeek(choreDates[c.Id]))
+            .OrderByDescending(g => g.Key)
+            .Take(3);
+
+        var usCulture = CultureInfo.CreateSpecificCulture("en-US");
+
+        foreach (var weekGroup in byWeek)
+        {
+            var topUserGroup = weekGroup
+                .GroupBy(c => c.UserId)
+                .Select(ug => new
+                {
+                    UserId = ug.Key,
+                    Points = ug.Sum(c => c.Points),
+                    UserName = allUsers.FirstOrDefault(u => u.Id == ug.Key)?.Name
+                               ?? ug.FirstOrDefault()?.UserName
+                               ?? "Roommate"
+                })
+                .OrderByDescending(x => x.Points)
+                .FirstOrDefault();
+
+            if (topUserGroup != null && topUserGroup.Points > 0)
+            {
+                DateTime wkStart = weekGroup.Key;
+                string monthAbbr = wkStart.ToString("MMM", usCulture);
+                int weekOfMonth = ((wkStart.Day - 1) / 7) + 1;
+
+                hallOfFameEntries.Add(new HallOfFameModel
+                {
+                    UserId = topUserGroup.UserId,
+                    UserName = topUserGroup.UserName,
+                    WeekStart = wkStart,
+                    WeekTitle = $"{monthAbbr} Week {weekOfMonth}",
+                    Points = topUserGroup.Points
+                });
+            }
+        }
+    }
+
+    private DateTime ParseChoreDate(ChoreDto chore)
+    {
+        if (string.IsNullOrWhiteSpace(chore.DueDateText))
+            return DateTime.Today;
+
+        string text = chore.DueDateText
+            .Replace("Completed", "", StringComparison.OrdinalIgnoreCase)
+            .Replace("Done ·", "", StringComparison.OrdinalIgnoreCase)
+            .Replace("Done", "", StringComparison.OrdinalIgnoreCase)
+            .Trim();
+
+        if (text.Equals("Today", StringComparison.OrdinalIgnoreCase) || string.IsNullOrEmpty(text))
+            return DateTime.Today;
+
+        if (text.Equals("Yesterday", StringComparison.OrdinalIgnoreCase))
+            return DateTime.Today.AddDays(-1);
+
+        var usCulture = CultureInfo.CreateSpecificCulture("en-US");
+        string[] formatsWithYear = { "MMM dd, yyyy", "MMM d, yyyy", "yyyy-MM-dd", "MM/dd/yyyy" };
+        if (DateTime.TryParseExact(text, formatsWithYear, usCulture, DateTimeStyles.None, out var fullDate))
+        {
+            return fullDate.Date;
+        }
+
+        string[] formatsNoYear = { "MMM dd", "MMM d" };
+        if (DateTime.TryParseExact(text, formatsNoYear, usCulture, DateTimeStyles.None, out var partialDate))
+        {
+            var candidate = new DateTime(DateTime.Now.Year, partialDate.Month, partialDate.Day);
+            if (candidate > DateTime.Today.AddDays(45))
+            {
+                candidate = candidate.AddYears(-1);
+            }
+            return candidate.Date;
+        }
+
+        if (DateTime.TryParse(text, usCulture, DateTimeStyles.None, out var fallbackDate))
+        {
+            return fallbackDate.Date;
+        }
+
+        return DateTime.Today;
+    }
+
+    private DateTime GetStartOfWeek(DateTime dt)
+    {
+        int diff = (7 + (dt.DayOfWeek - DayOfWeek.Monday)) % 7;
+        return dt.AddDays(-1 * diff).Date;
+    }
+
+    private string GetUserColor(int userId)
+    {
+        int index = allUsers.FindIndex(u => u.Id == userId);
+        if (index < 0) index = Math.Abs(userId);
+        return roommatePalette[index % roommatePalette.Length];
+    }
+
+    private string GetCategoryColor(string categoryKey)
+    {
+        var match = roomCategories.FirstOrDefault(c => c.Name.Equals(categoryKey, StringComparison.OrdinalIgnoreCase));
+        if (match != null && !string.IsNullOrWhiteSpace(match.ColorHex))
+        {
+            return match.ColorHex;
+        }
+
+        return categoryKey.ToUpperInvariant() switch
+        {
+            "CLEANING" => "#15803d",
+            "MAINTENANCE" => "#be123c",
+            "SHOPPING" => "#a16207",
+            _ => "#6366f1"
+        };
+    }
+
+    private string FormatCategoryName(string upperCategory)
+    {
+        if (string.IsNullOrWhiteSpace(upperCategory)) return "Other";
+        return char.ToUpper(upperCategory[0]) + upperCategory.Substring(1).ToLowerInvariant();
+    }
+
+    private async void OnApartmentChanged()
+    {
+        await LoadAndCalculateAnalyticsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ApartmentState.OnChange -= OnApartmentChanged;
+    }
+}
+
+<style>
+    .analytics-card {
+        border-color: #eef2f6 !important;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03) !important;
+    }
+
+    .kpi-label {
+        font-size: 0.68rem;
+        letter-spacing: 0.6px;
+    }
+
+    .extra-small {
+        font-size: 0.78rem;
+    }
+
+    .legend-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        flex-shrink: 0;
+    }
+
+    .stacked-bar-segment {
+        width: 38px;
+        border-top: 2px solid #ffffff;
+        transition: height 0.3s ease, opacity 0.2s ease;
+    }
+
+        .stacked-bar-segment:last-child {
+            border-top: none;
+            border-top-left-radius: 3px;
+            border-top-right-radius: 3px;
+        }
+
+        .stacked-bar-segment:first-child {
+            border-bottom-left-radius: 3px;
+            border-bottom-right-radius: 3px;
+        }
+
+        .stacked-bar-segment:hover {
+            opacity: 0.85;
+        }
+
+    .empty-bar-placeholder {
+        width: 38px;
+        height: 4px;
+        background-color: #f1f5f9;
+        border-radius: 2px;
+    }
+
+    .donut-chart {
+        position: relative;
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .donut-hole {
+        width: 72px;
+        height: 72px;
+        background-color: #ffffff;
+        border-radius: 50%;
+    }
+</style>

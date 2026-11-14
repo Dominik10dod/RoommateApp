@@ -54,6 +54,7 @@ namespace RoommateApp.Bll.Services
         public async Task<List<UserDto>> GetUsersByApartmentAsync(int apartmentId)
         {
             return await _context.UserApartments
+                .Include(ua => ua.User)
                 .Where(ua => ua.ApartmentId == apartmentId)
                 .Select(ua => new UserDto
                 {
@@ -63,6 +64,18 @@ namespace RoommateApp.Bll.Services
                     IsAdmin = ua.IsAdmin
                 })
                 .ToListAsync();
+        }
+
+        public async Task<bool> RemoveUserFromApartmentAsync(int apartmentId, int userId)
+        {
+            var membership = await _context.UserApartments
+                .FirstOrDefaultAsync(ua => ua.ApartmentId == apartmentId && ua.UserId == userId);
+
+            if (membership == null) return false;
+
+            _context.UserApartments.Remove(membership);
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         // A felhasználó szobáinak lekérése
@@ -133,19 +146,6 @@ namespace RoommateApp.Bll.Services
                 IsAdmin = false
             });
 
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-        // Eltávolítás az adott szobából
-        public async Task<bool> RemoveUserFromApartmentAsync(int userId, int apartmentId)
-        {
-            var ua = await _context.UserApartments
-                .FirstOrDefaultAsync(x => x.UserId == userId && x.ApartmentId == apartmentId);
-
-            if (ua == null) return false;
-
-            _context.UserApartments.Remove(ua);
             await _context.SaveChangesAsync();
             return true;
         }
