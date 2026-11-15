@@ -12,6 +12,7 @@
 @inject ApartmentStateService ApartmentState
 @inject UserSessionService UserSession
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 @implements IDisposable
 
 <div class="p-3 p-md-4">
@@ -292,7 +293,11 @@
                 var rooms = await UsersClient.GetUserApartmentsAsync(currentUserId);
                 if (rooms != null && rooms.Any())
                 {
-                    await ApartmentState.LoadAsync(rooms.First().Id);
+                    var savedIdStr = await JS.InvokeAsync<string?>("localStorage.getItem", $"choreboard_selected_apartment_{currentUserId}");
+                    int.TryParse(savedIdStr, out int savedApartmentId);
+
+                    var targetRoom = rooms.FirstOrDefault(r => r.Id == savedApartmentId) ?? rooms.First();
+                    await ApartmentState.LoadAsync(targetRoom.Id);
                 }
             }
 

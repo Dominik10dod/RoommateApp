@@ -1,6 +1,7 @@
 <Solution>
   <Project Path="RoommateApp.Bll/RoommateApp.Bll.csproj" />
   <Project Path="RoommateApp.Db/RoommateApp.Db.csproj" />
+  <Project Path="RoommateApp.Tests/RoommateApp.Tests.csproj" Id="09ade16f-3d9b-40d4-9416-ca06e1cfa4ab" />
   <Project Path="RoommateApp.Web/RoommateApp.Web.Client/RoommateApp.Web.Client.csproj" />
   <Project Path="RoommateApp.Web/RoommateApp.Web/RoommateApp.Web.csproj" />
 </Solution>

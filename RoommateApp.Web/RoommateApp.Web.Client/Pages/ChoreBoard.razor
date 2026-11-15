@@ -12,6 +12,7 @@
 @inject NavigationManager Navigation
 @inject ApartmentStateService ApartmentState
 @inject UserSessionService UserSession
+@inject RealtimeSyncService RealtimeSync
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -19,7 +20,7 @@
     <!-- Header Component -->
     <AppHeader ActivePage="Board" />
 
-    <!-- Mobile Live Leaderboard (Moved from bottom sidebar on < lg) -->
+    <!-- Mobile & Tablet Live Leaderboard (< lg) -->
     @if (!isLoading)
     {
         <div class="d-block d-lg-none mb-3">
@@ -62,210 +63,126 @@
     }
     else
     {
-        <!-- Main Grid -->
-        <RadzenRow class="g-4">
-            <!-- Left Kanban Area -->
-            <RadzenColumn Size="12" SizeLg="@(isPanelHidden ? 12 : 9)">
+        <!-- DESKTOP VIEW (>= lg): Interactive RadzenSplitter Layout -->
+        <div class="d-none d-lg-block">
+            @if (isPanelHidden)
+            {
+                @RenderDesktopKanbanBoard()
+            }
+            else
+            {
+                <RadzenSplitter Orientation="Orientation.Horizontal" Class="custom-board-splitter">
+                    <RadzenSplitterPane Size="75%" Min="50%" Collapsible="false">
+                        <div class="pe-3 py-1">
+                            @RenderDesktopKanbanBoard()
+                        </div>
+                    </RadzenSplitterPane>
+                    <RadzenSplitterPane Size="25%" Min="260px" Max="45%" Collapsible="true">
+                        <div class="ps-3 py-1 d-flex flex-column gap-4">
+                            @RenderLiveLeaderboard()
+                            @RenderStatsWidget()
+                        </div>
+                    </RadzenSplitterPane>
+                </RadzenSplitter>
+            }
+        </div>
 
-                <!-- MOBILE VIEW (< md): Column Switcher Tabs + Single Active Column -->
-                <div class="d-block d-md-none">
-                    <!-- Column Selector Pills (Centered when <= 3 columns) -->
-                    <div class="@($"d-flex gap-2 overflow-x-auto pb-2 mb-3 mobile-col-tabs {(boardColumns.Count <= 3 ? "justify-content-center" : "justify-content-start")}")">
-                        @foreach (var col in boardColumns)
-                        {
-                            bool isSelected = col.Id == activeMobileColumnId;
-                            int count = GetChoresForColumn(col.Id).Count;
+        <!-- MOBILE & TABLET VIEW (< lg) -->
+        <div class="d-block d-lg-none">
+            <!-- MOBILE (< md): Column Switcher Tabs + Single Active Column -->
+            <div class="d-block d-md-none">
+                <div class="@($"d-flex gap-2 overflow-x-auto pb-2 mb-3 mobile-col-tabs {(boardColumns.Count <= 3 ? "justify-content-center" : "justify-content-start")}")">
+                    @foreach (var col in boardColumns)
+                    {
+                        bool isSelected = col.Id == activeMobileColumnId;
+                        int count = GetChoresForColumn(col.Id).Count;
 
-                            <button type="button"
-                                    class="@($"btn btn-sm rounded-3 px-2 px-sm-3 py-2 fw-bold extra-small d-flex align-items-center gap-1 gap-sm-2 flex-shrink-0 {(isSelected ? "bg-white text-dark shadow-sm border" : "bg-light text-secondary border-0")}")"
-                                    @onclick="() => activeMobileColumnId = col.Id">
-                                <span>@col.Title</span>
-                                <span class="@($"badge rounded-pill {(isSelected ? "bg-primary text-white" : "bg-white text-secondary border")}")" style="font-size: 0.68rem;">
-                                    @count
-                                </span>
-                            </button>
-                        }
-                    </div>
-
-                    @{
-                        var activeCol = boardColumns.FirstOrDefault(c => c.Id == activeMobileColumnId) ?? boardColumns.First();
-                        var activeColChores = GetChoresForColumn(activeCol.Id);
+                        <button type="button"
+                                class="@($"btn btn-sm rounded-3 px-2 px-sm-3 py-2 fw-bold extra-small d-flex align-items-center gap-1 gap-sm-2 flex-shrink-0 {(isSelected ? "bg-white text-dark shadow-sm border" : "bg-light text-secondary border-0")}")"
+                                @onclick="() => activeMobileColumnId = col.Id">
+                            <span>@col.Title</span>
+                            <span class="@($"badge rounded-pill {(isSelected ? "bg-primary text-white" : "bg-white text-secondary border")}")" style="font-size: 0.68rem;">
+                                @count
+                            </span>
+                        </button>
                     }
+                </div>
 
-                    <!-- Active Mobile Column Header -->
-                    <div class="d-flex justify-content-between align-items-center mb-3 px-1">
-                        <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
-                            @if (activeCol.IsEditing)
-                            {
-                                <input type="text" class="form-control form-control-sm extra-small py-1 px-2"
-                                       @bind="activeCol.Title"
-                                       @onblur="() => FinishEditingColumn(activeCol)"
-                                       @onkeyup='async (e) => { if(e.Key == "Enter") await FinishEditingColumn(activeCol); }'
-                                       autofocus />
-                            }
-                            else
-                            {
-                                <h3 class="h6 fw-bold m-0 text-dark text-truncate"
-                                    @ondblclick="() => activeCol.IsEditing = true">
-                                    @activeCol.Title
-                                </h3>
-                            }
-                        </div>
+                @{
+                    var activeCol = boardColumns.FirstOrDefault(c => c.Id == activeMobileColumnId) ?? boardColumns.First();
+                    var activeColChores = GetChoresForColumn(activeCol.Id);
+                }
 
-                        <div class="d-flex align-items-center gap-2 ms-2">
-                            @if (activeCol.Id != "Done")
-                            {
-                                <button class="btn btn-sm btn-light border rounded-circle d-inline-flex align-items-center justify-content-center p-0"
-                                        style="width: 28px; height: 28px;"
-                                        title="Add new column after"
-                                        @onclick="() => AddColumnAfter(activeCol)">
-                                    <RadzenIcon Icon="add" Style="font-size: 1rem; color: #64748b;" />
-                                </button>
-                            }
-                            @if (!activeCol.IsBuiltIn)
-                            {
-                                <button class="btn btn-sm btn-outline-danger rounded-circle d-inline-flex align-items-center justify-content-center p-0"
-                                        style="width: 28px; height: 28px;"
-                                        title="Remove column"
-                                        @onclick="() => RemoveColumn(activeCol)">
-                                    <RadzenIcon Icon="close" Style="font-size: 1rem;" />
-                                </button>
-                            }
-                        </div>
-                    </div>
-
-                    <!-- Active Mobile Column Cards -->
-                    <div class="d-flex flex-column gap-3 pb-2">
-                        @if (!activeColChores.Any())
+                <!-- Active Mobile Column Header -->
+                <div class="d-flex justify-content-between align-items-center mb-3 px-1">
+                    <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+                        @if (activeCol.IsEditing)
                         {
-                            <div class="card border-0 rounded-4 p-4 bg-white text-center text-muted extra-small shadow-sm">
-                                No chores in "@activeCol.Title".
-                            </div>
+                            <input type="text" class="form-control form-control-sm extra-small py-1 px-2"
+                                   @bind="activeCol.Title"
+                                   @onblur="() => FinishEditingColumn(activeCol)"
+                                   @onkeyup='async (e) => { if(e.Key == "Enter") await FinishEditingColumn(activeCol); }'
+                                   autofocus />
                         }
                         else
                         {
-                            @foreach (var chore in activeColChores)
-                            {
-                                @RenderChoreCard(chore)
-                            }
+                            <h3 class="h6 fw-bold m-0 text-dark text-truncate"
+                                @ondblclick="() => activeCol.IsEditing = true">
+                                Active Chores (@activeCol.Title)
+                            </h3>
+                        }
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2 ms-2">
+                        @if (activeCol.Id != "Done")
+                        {
+                            <button class="btn btn-sm btn-light border rounded-circle d-inline-flex align-items-center justify-content-center p-0"
+                                    style="width: 28px; height: 28px;"
+                                    title="Add new column after"
+                                    @onclick="() => AddColumnAfter(activeCol)">
+                                <RadzenIcon Icon="add" Style="font-size: 1rem; color: #64748b;" />
+                            </button>
+                        }
+                        @if (!activeCol.IsBuiltIn)
+                        {
+                            <button class="btn btn-sm btn-outline-danger rounded-circle d-inline-flex align-items-center justify-content-center p-0"
+                                    style="width: 28px; height: 28px;"
+                                    title="Remove column"
+                                    @onclick="() => RemoveColumn(activeCol)">
+                                <RadzenIcon Icon="close" Style="font-size: 1rem;" />
+                            </button>
                         }
                     </div>
                 </div>
 
-                <!-- DESKTOP VIEW (>= md): Multi-Column Drag & Drop Kanban -->
-                <div class="d-none d-md-flex gap-3 w-100 pb-3" style="min-height: 600px;">
-                    @foreach (var col in boardColumns)
+                <!-- Active Mobile Column Cards -->
+                <div class="d-flex flex-column gap-3 pb-2">
+                    @if (!activeColChores.Any())
                     {
-                        var colChores = GetChoresForColumn(col.Id);
-
-                        <div class="kanban-column flex-fill d-flex flex-column" style="min-width: 200px;">
-                            <!-- Column Header -->
-                            <div class="d-flex justify-content-between align-items-center mb-3 px-1">
-                                <div class="d-flex align-items-center gap-2 flex-grow-1">
-                                    @if (col.IsEditing)
-                                    {
-                                        <input type="text" class="form-control form-control-sm extra-small py-1 px-2"
-                                               @bind="col.Title"
-                                               @onblur="() => FinishEditingColumn(col)"
-                                               @onkeyup='async (e) => { if(e.Key == "Enter") await FinishEditingColumn(col); }'
-                                               autofocus />
-                                    }
-                                    else
-                                    {
-                                        <h3 class="h6 fw-bold m-0 text-dark text-truncate"
-                                            title="Double-click to rename"
-                                            @ondblclick="() => col.IsEditing = true">
-                                            @col.Title
-                                        </h3>
-                                    }
-                                    <span class="badge bg-light text-secondary border rounded-pill px-2 extra-small">@colChores.Count</span>
-                                </div>
-
-                                <div class="d-flex align-items-center gap-1 ms-2">
-                                    @if (col.Id != "Done")
-                                    {
-                                        <button class="btn btn-sm btn-link p-0 text-muted text-decoration-none"
-                                                title="Add new column after"
-                                                @onclick="() => AddColumnAfter(col)">
-                                            <RadzenIcon Icon="add" Style="font-size: 1.1rem; color: #64748b;" />
-                                        </button>
-                                    }
-
-                                    @if (!col.IsBuiltIn)
-                                    {
-                                        <button class="btn btn-sm btn-link p-0 text-danger text-decoration-none ms-1"
-                                                title="Remove column"
-                                                @onclick="() => RemoveColumn(col)">
-                                            <RadzenIcon Icon="close" Style="font-size: 1.1rem;" />
-                                        </button>
-                                    }
-                                </div>
-                            </div>
-
-                            <!-- Drop Zone -->
-                            <div class="d-flex flex-column gap-3 drop-zone p-2 rounded-3 flex-grow-1"
-                                 @ondragover:preventDefault
-                                 @ondrop='() => HandleDrop(col.Id)'>
-                                @foreach (var chore in colChores)
-                                {
-                                    @RenderChoreCard(chore)
-                                }
-                            </div>
+                        <div class="card border-0 rounded-4 p-4 bg-white text-center text-muted extra-small shadow-sm">
+                            No chores in "@activeCol.Title".
                         </div>
                     }
+                    else
+                    {
+                        @foreach (var chore in activeColChores)
+                        {
+                            @RenderChoreCard(chore)
+                        }
+                    }
                 </div>
-            </RadzenColumn>
+            </div>
 
-            <!-- Right Sidebar Area (Stacks below on mobile) -->
-            @if (!isPanelHidden)
-            {
-                <RadzenColumn Size="12" SizeLg="3">
-                    <div class="d-flex flex-column gap-3 gap-md-4">
-                        <!-- Widget 1: Live Leaderboard (Desktop only, shown at top on mobile) -->
-                        <div class="d-none d-lg-block">
-                            @RenderLiveLeaderboard()
-                        </div>
+            <!-- TABLET (md .. lg): Multi-column Kanban -->
+            <div class="d-none d-md-block">
+                @RenderDesktopKanbanBoard()
+            </div>
 
-                        <!-- Widget 2: Dynamic Period Stats -->
-                        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
-                            <div class="d-flex align-items-center gap-2 mb-3">
-                                <RadzenIcon Icon="bar_chart" Style="color: #6366f1; font-size: 1.2rem;" />
-                                <h3 class="h6 fw-bold m-0 text-dark">@GetStatsTitle()</h3>
-                            </div>
-
-                            <div class="row g-2 mb-3">
-                                <div class="col-6">
-                                    <div class="p-2 bg-light rounded-3">
-                                        <div class="text-uppercase text-muted fw-bold extra-small d-flex align-items-center gap-1">
-                                            <RadzenIcon Icon="local_fire_department" Style="color: #ef4444; font-size: 0.9rem;" /> STREAK
-                                        </div>
-                                        <div class="h4 fw-bold m-0 mt-1 text-dark">@activeStreakDays <small class="text-muted fs-6 fw-normal">days</small></div>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="p-2 bg-light rounded-3">
-                                        <div class="text-uppercase text-muted fw-bold extra-small d-flex align-items-center gap-1">
-                                            <RadzenIcon Icon="check_circle" Style="color: #10b981; font-size: 0.9rem;" /> DONE
-                                        </div>
-                                        <div class="h4 fw-bold m-0 mt-1 text-dark">@doneChoresCount <small class="text-muted fs-6 fw-normal">chores</small></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            @if (leaderboard.Any())
-                            {
-                                <div class="p-2 rounded-3 bg-light d-flex align-items-start gap-2">
-                                    <RadzenIcon Icon="electric_bolt" Style="color: #eab308; font-size: 1.1rem;" />
-                                    <span class="text-muted extra-small">
-                                        <strong>@leaderboard.First().Name</strong> is currently leading the leaderboard!
-                                    </span>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                </RadzenColumn>
-            }
-        </RadzenRow>
+            <!-- Stacked Period Stats Widget on Mobile & Tablet -->
+            <div class="mt-4">
+                @RenderStatsWidget()
+            </div>
+        </div>
     }
 </div>
 
@@ -418,6 +335,7 @@
 
         ApartmentState.OnChange += OnApartmentChanged;
         UserSession.OnChange += StateHasChanged;
+        RealtimeSync.OnBoardUpdated += OnRealtimeBoardUpdated;
 
         await CheckUserApartmentsAndLoadAsync();
     }
@@ -464,7 +382,10 @@
 
             if (ApartmentState.Id == 0 || !currentRoomStillExists)
             {
-                var nextRoom = userRooms.First();
+                var savedIdStr = await JS.InvokeAsync<string?>("localStorage.getItem", $"choreboard_selected_apartment_{currentUserId}");
+                int.TryParse(savedIdStr, out int savedApartmentId);
+
+                var nextRoom = userRooms.FirstOrDefault(r => r.Id == savedApartmentId) ?? userRooms.First();
                 await ApartmentState.LoadAsync(nextRoom.Id);
             }
 
@@ -484,6 +405,7 @@
         {
             if (ApartmentState.Id > 0)
             {
+                await RealtimeSync.JoinApartmentAsync(ApartmentState.Id);
                 await LoadColumnsAsync();
                 await LoadRoomCategoriesAsync();
 
@@ -503,6 +425,27 @@
         finally
         {
             isLoading = false;
+        }
+    }
+
+    private async void OnRealtimeBoardUpdated()
+    {
+        if (ApartmentState.Id <= 0) return;
+        try
+        {
+            await LoadRoomCategoriesAsync();
+            var chores = await ChoresClient.GetChoresByApartmentAsync(ApartmentState.Id);
+            var users = await UsersClient.GetUsersByApartmentAsync(ApartmentState.Id);
+
+            allChores = chores.ToList();
+            allUsers = users.ToList();
+
+            RefreshBoardAndLeaderboard();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Realtime refresh error: {ex.Message}");
         }
     }
 
@@ -578,6 +521,7 @@
     {
         ApartmentState.OnChange -= OnApartmentChanged;
         UserSession.OnChange -= StateHasChanged;
+        RealtimeSync.OnBoardUpdated -= OnRealtimeBoardUpdated;
     }
 
     private async Task AddColumnAfter(BoardColumn currentCol)
@@ -637,6 +581,7 @@
         }
         await SaveColumnsAsync();
         RefreshBoardAndLeaderboard();
+        await RealtimeSync.NotifyBoardUpdatedAsync(ApartmentState.Id);
     }
 
     private List<ChoreDto> GetChoresForColumn(string columnId)
@@ -704,6 +649,7 @@
                     DueDateText = chore.DueDateText
                 });
                 UserSession.NotifyPointsChanged();
+                await RealtimeSync.NotifyBoardUpdatedAsync(ApartmentState.Id);
             }
             catch (Exception ex)
             {
@@ -845,6 +791,7 @@
                 await ApartmentState.LoadAsync(joinedRoom.Id);
                 showMandatoryRoomModal = false;
                 await CheckUserApartmentsAndLoadAsync();
+                await RealtimeSync.NotifyBoardUpdatedAsync(joinedRoom.Id);
             }
             else
             {
@@ -860,6 +807,71 @@
         {
             isSubmittingMandatory = false;
         }
+    }
+
+    private RenderFragment RenderDesktopKanbanBoard()
+    {
+        return @<div class="d-flex gap-3 w-100 pb-3" style="min-height: 600px;">
+            @foreach (var col in boardColumns)
+            {
+                var colChores = GetChoresForColumn(col.Id);
+
+                <div class="kanban-column flex-fill d-flex flex-column" style="min-width: 180px;">
+                    <!-- Column Header -->
+                    <div class="d-flex justify-content-between align-items-center mb-3 px-1">
+                        <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+                            @if (col.IsEditing)
+                            {
+                                <input type="text" class="form-control form-control-sm extra-small py-1 px-2"
+                                       @bind="col.Title"
+                                       @onblur="() => FinishEditingColumn(col)"
+                                       @onkeyup='async (e) => { if(e.Key == "Enter") await FinishEditingColumn(col); }'
+                                       autofocus />
+                            }
+                            else
+                            {
+                                <h3 class="h6 fw-bold m-0 text-dark text-truncate"
+                                    title="Double-click to rename"
+                                    @ondblclick="() => col.IsEditing = true">
+                                    @col.Title
+                                </h3>
+                            }
+                            <span class="badge bg-light text-secondary border rounded-pill px-2 extra-small">@colChores.Count</span>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-1 ms-2">
+                            @if (col.Id != "Done")
+                            {
+                                <button class="btn btn-sm btn-link p-0 text-muted text-decoration-none"
+                                        title="Add new column after"
+                                        @onclick="() => AddColumnAfter(col)">
+                                    <RadzenIcon Icon="add" Style="font-size: 1.1rem; color: #64748b;" />
+                                </button>
+                            }
+
+                            @if (!col.IsBuiltIn)
+                            {
+                                <button class="btn btn-sm btn-link p-0 text-danger text-decoration-none ms-1"
+                                        title="Remove column"
+                                        @onclick="() => RemoveColumn(col)">
+                                    <RadzenIcon Icon="close" Style="font-size: 1.1rem;" />
+                                </button>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Drop Zone -->
+                    <div class="d-flex flex-column gap-3 drop-zone p-2 rounded-3 flex-grow-1"
+                         @ondragover:preventDefault
+                         @ondrop='() => HandleDrop(col.Id)'>
+                        @foreach (var chore in colChores)
+                        {
+                            @RenderChoreCard(chore)
+                        }
+                    </div>
+                </div>
+            }
+        </div>;
     }
 
     private RenderFragment RenderLiveLeaderboard()
@@ -907,6 +919,45 @@
                     Reach @ApartmentState.RewardThreshold.ToString("N0") points collectively to unlock @ApartmentState.RewardDescription
                 </p>
             </div>
+        </div>;
+    }
+
+    private RenderFragment RenderStatsWidget()
+    {
+        return @<div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <RadzenIcon Icon="bar_chart" Style="color: #6366f1; font-size: 1.2rem;" />
+                <h3 class="h6 fw-bold m-0 text-dark">@GetStatsTitle()</h3>
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-6">
+                    <div class="p-2 bg-light rounded-3">
+                        <div class="text-uppercase text-muted fw-bold extra-small d-flex align-items-center gap-1">
+                            <RadzenIcon Icon="local_fire_department" Style="color: #ef4444; font-size: 0.9rem;" /> STREAK
+                        </div>
+                        <div class="h4 fw-bold m-0 mt-1 text-dark">@activeStreakDays <small class="text-muted fs-6 fw-normal">days</small></div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="p-2 bg-light rounded-3">
+                        <div class="text-uppercase text-muted fw-bold extra-small d-flex align-items-center gap-1">
+                            <RadzenIcon Icon="check_circle" Style="color: #10b981; font-size: 0.9rem;" /> DONE
+                        </div>
+                        <div class="h4 fw-bold m-0 mt-1 text-dark">@doneChoresCount <small class="text-muted fs-6 fw-normal">chores</small></div>
+                    </div>
+                </div>
+            </div>
+
+            @if (leaderboard.Any())
+            {
+                <div class="p-2 rounded-3 bg-light d-flex align-items-start gap-2">
+                    <RadzenIcon Icon="electric_bolt" Style="color: #eab308; font-size: 1.1rem;" />
+                    <span class="text-muted extra-small">
+                        <strong>@leaderboard.First().Name</strong> is currently leading the leaderboard!
+                    </span>
+                </div>
+            }
         </div>;
     }
 
@@ -970,6 +1021,26 @@
 
     .mobile-col-tabs::-webkit-scrollbar {
         height: 3px;
+    }
+
+    .custom-board-splitter {
+        border: none !important;
+        background: transparent !important;
+        min-height: 620px;
+    }
+
+    .custom-board-splitter .rz-splitter-pane {
+        background: transparent !important;
+    }
+
+    .custom-board-splitter .rz-splitter-bar {
+        background-color: #e2e8f0 !important;
+        border-radius: 999px;
+        transition: background-color 0.2s ease;
+    }
+
+    .custom-board-splitter .rz-splitter-bar:hover {
+        background-color: #6366f1 !important;
     }
 
     .drop-zone {

@@ -13,6 +13,7 @@
 @inject UserSessionService UserSession
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject RealtimeSyncService RealtimeSync
 @implements IDisposable
 
 <div class="p-3 p-md-4">
@@ -473,6 +474,7 @@
 
         currentUserId = UserSession.CurrentUser?.Id ?? 1;
         ApartmentState.OnChange += OnApartmentStateChanged;
+        RealtimeSync.OnBoardUpdated += OnApartmentStateChanged;
 
         await LoadDashboardDataAsync();
     }
@@ -484,6 +486,19 @@
 
         try
         {
+            if (ApartmentState.Id == 0 && currentUserId > 0)
+            {
+                var userRooms = await UsersClient.GetUserApartmentsAsync(currentUserId);
+                if (userRooms != null && userRooms.Any())
+                {
+                    var savedIdStr = await JS.InvokeAsync<string?>("localStorage.getItem", $"choreboard_selected_apartment_{currentUserId}");
+                    int.TryParse(savedIdStr, out int savedApartmentId);
+
+                    var targetRoom = userRooms.FirstOrDefault(r => r.Id == savedApartmentId) ?? userRooms.First();
+                    await ApartmentState.LoadAsync(targetRoom.Id);
+                }
+            }
+
             if (ApartmentState.Id > 0)
             {
                 apartmentNameInput = ApartmentState.ApartmentName;
@@ -638,6 +653,7 @@
             showRemoveConfirmModal = false;
             userToRemove = null;
             StateHasChanged();
+            await RealtimeSync.NotifyBoardUpdatedAsync(ApartmentState.Id);
         }
         catch (Exception ex)
         {
@@ -662,6 +678,7 @@
 
             isSettingsSuccess = true;
             settingsMessage = "Apartment settings saved successfully! Goal & Schedule updated live.";
+            await RealtimeSync.NotifyBoardUpdatedAsync(ApartmentState.Id);
         }
         catch (Exception ex)
         {
@@ -750,6 +767,7 @@
 
             isCreateChoreSuccess = true;
             createChoreMessage = "Chore created and added to the board!";
+            await RealtimeSync.NotifyBoardUpdatedAsync(ApartmentState.Id);
 
             newChoreTitle = string.Empty;
             newChorePoints = 15;
@@ -821,6 +839,7 @@
     public void Dispose()
     {
         ApartmentState.OnChange -= OnApartmentStateChanged;
+        RealtimeSync.OnBoardUpdated -= OnApartmentStateChanged;
     }
 }
 

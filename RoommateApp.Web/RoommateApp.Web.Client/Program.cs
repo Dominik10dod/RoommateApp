@@ -6,6 +6,8 @@ using RoommateApp.Web.Client.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
+builder.Services.AddScoped<RealtimeSyncService>();
+
 builder.Services.AddRadzenComponents();
 builder.Services.AddScoped<UserSessionService>();
 
@@ -48,4 +50,9 @@ builder.Services.AddScoped<ChoresClient>(sp =>
     };
 });
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+
+var userSession = host.Services.GetRequiredService<UserSessionService>();
+await userSession.InitializeAsync();
+
+await host.RunAsync();

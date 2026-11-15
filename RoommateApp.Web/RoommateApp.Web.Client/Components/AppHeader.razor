@@ -6,6 +6,8 @@
 @inject UsersClient UsersClient
 @inject ChoresClient ChoresClient
 @inject NavigationManager Navigation
+@inject RealtimeSyncService RealtimeSync
+@inject IJSRuntime JS
 @implements IDisposable
 
 <div class="mb-3 mb-md-4 border-bottom bg-white rounded-4 px-3 py-2 py-md-3 shadow-sm">
@@ -205,6 +207,7 @@
 
     protected override void OnInitialized()
     {
+        RealtimeSync.OnBoardUpdated += HandleStateChanged;
         ApartmentState.OnChange += HandleStateChanged;
         UserSession.OnChange += HandleStateChanged;
         UserSession.OnPointsChanged += HandleStateChanged;
@@ -231,8 +234,26 @@
             var rooms = await UsersClient.GetUserApartmentsAsync(currentUserId);
             userApartments = rooms?.ToList() ?? new List<ApartmentDto>();
 
+            int userId = UserSession.CurrentUser?.Id ?? 0;
+            if (userId > 0)
+            {
+                var userRooms = await UsersClient.GetUserApartmentsAsync(userId);
+                if (userRooms != null && userRooms.Any())
+                {
+                    if (ApartmentState.Id == 0 || !userRooms.Any(r => r.Id == ApartmentState.Id))
+                    {
+                        var savedIdStr = await JS.InvokeAsync<string?>("localStorage.getItem", $"choreboard_selected_apartment_{userId}");
+                        int.TryParse(savedIdStr, out int savedApartmentId);
+
+                        var targetRoom = userRooms.FirstOrDefault(r => r.Id == savedApartmentId) ?? userRooms.First();
+                        await ApartmentState.LoadAsync(targetRoom.Id);
+                    }
+                }
+            }
+
             if (ApartmentState.Id > 0)
             {
+                await RealtimeSync.JoinApartmentAsync(ApartmentState.Id);
                 var allChores = await ChoresClient.GetChoresByApartmentAsync(ApartmentState.Id);
                 totalUserPoints = allChores?
                     .Where(c => c.UserId == currentUserId && string.Equals(c.Status, "Done", StringComparison.OrdinalIgnoreCase))
@@ -264,6 +285,11 @@
         if (apartmentId == ApartmentState.Id) return;
 
         await ApartmentState.LoadAsync(apartmentId);
+        int userId = UserSession.CurrentUser?.Id ?? 0;
+        if (userId > 0)
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", $"choreboard_selected_apartment_{userId}", apartmentId.ToString());
+        }
     }
 
     private void OpenCreateModal()
@@ -341,6 +367,7 @@
             {
                 showActionModal = false;
                 await ApartmentState.LoadAsync(joined.Id);
+                await RealtimeSync.NotifyBoardUpdatedAsync(joined.Id);
             }
             else
             {
@@ -367,6 +394,7 @@
 
     public void Dispose()
     {
+        RealtimeSync.OnBoardUpdated -= HandleStateChanged;
         ApartmentState.OnChange -= HandleStateChanged;
         UserSession.OnChange -= HandleStateChanged;
         UserSession.OnPointsChanged -= HandleStateChanged;

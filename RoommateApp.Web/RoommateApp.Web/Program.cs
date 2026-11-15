@@ -60,6 +60,8 @@ builder.Services.AddOpenApiDocument(config =>
     config.Version = "v1";
 });
 
+builder.Services.AddSignalR();
+
 var app = builder.Build();
 
 // =========================================================
@@ -135,6 +137,7 @@ app.MapStaticAssets();
 
 // G. Végpontok (Controllers & Blazor App)
 app.MapControllers();
+app.MapHub<ChoreHub>("/chorehub");
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
