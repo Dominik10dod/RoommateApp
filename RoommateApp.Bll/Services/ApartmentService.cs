@@ -38,6 +38,10 @@ namespace RoommateApp.Bll.Services
 
             apt.Name = dto.Name;
             apt.RewardThreshold = dto.RewardThreshold;
+            if (apt.ResetSchedule != dto.ResetSchedule || apt.LastResetDate == null)
+            {
+                apt.LastResetDate = DateTime.UtcNow;
+            }
             apt.ResetSchedule = dto.ResetSchedule;
 
             await _context.SaveChangesAsync();
@@ -61,7 +65,8 @@ namespace RoommateApp.Bll.Services
                 {
                     Name = "Budapesti Lakás",
                     RewardThreshold = 5000,
-                    ResetSchedule = "Sunday 12:00 AM",
+                    ResetSchedule = "Weekly",
+                    LastResetDate = DateTime.UtcNow,
                     InviteCode = "APT4B-8X92"
                 };
                 _context.Apartments.Add(apt);
@@ -104,11 +109,11 @@ namespace RoommateApp.Bll.Services
         public async Task<List<CategoryDto>> GetCategoriesByApartmentAsync(int apartmentId)
         {
             var categories = new List<CategoryDto>
-    {
-        new() { Name = "CLEANING", ColorHex = "#15803d" },
-        new() { Name = "MAINTENANCE", ColorHex = "#be123c" },
-        new() { Name = "SHOPPING", ColorHex = "#a16207" }
-    };
+            {
+                new() { Name = "CLEANING", ColorHex = "#15803d" },
+                new() { Name = "MAINTENANCE", ColorHex = "#be123c" },
+                new() { Name = "SHOPPING", ColorHex = "#a16207" }
+            };
 
             var customCategories = await _context.ApartmentCategories
                 .Where(c => c.ApartmentId == apartmentId)
@@ -169,6 +174,61 @@ namespace RoommateApp.Bll.Services
             }
 
             return new CategoryDto { Name = normalized, ColorHex = color };
+        }
+
+        // Lejárt időszakhoz tartozó chore-ok automatikus törlése az adatbázisból
+        public async Task CleanupExpiredChoresAsync(int? specificApartmentId = null)
+        {
+            var query = _context.Apartments.AsQueryable();
+            if (specificApartmentId.HasValue)
+            {
+                query = query.Where(a => a.Id == specificApartmentId.Value);
+            }
+
+            var apartments = await query.ToListAsync();
+            var now = DateTime.UtcNow;
+            bool hasChanges = false;
+
+            foreach (var apt in apartments)
+            {
+                if (apt.LastResetDate == null)
+                {
+                    apt.LastResetDate = now;
+                    hasChanges = true;
+                    continue;
+                }
+
+                DateTime nextReset = apt.ResetSchedule switch
+                {
+                    "Weekly" => apt.LastResetDate.Value.AddDays(7),
+                    "BiWeekly" => apt.LastResetDate.Value.AddDays(14),
+                    "Monthly" => apt.LastResetDate.Value.AddMonths(1),
+                    "Quarterly" => apt.LastResetDate.Value.AddMonths(3),
+                    "SemiAnnually" => apt.LastResetDate.Value.AddMonths(6),
+                    "Yearly" => apt.LastResetDate.Value.AddYears(1),
+                    _ => apt.LastResetDate.Value.AddDays(7)
+                };
+
+                if (now >= nextReset)
+                {
+                    var choresToDelete = await _context.Chores
+                        .Where(c => c.ApartmentId == apt.Id && c.Status == "Done")
+                        .ToListAsync();
+
+                    if (choresToDelete.Any())
+                    {
+                        _context.Chores.RemoveRange(choresToDelete);
+                    }
+
+                    apt.LastResetDate = now;
+                    hasChanges = true;
+                }
+            }
+
+            if (hasChanges)
+            {
+                await _context.SaveChangesAsync();
+            }
         }
     }
 }

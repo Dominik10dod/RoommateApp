@@ -1,128 +1,166 @@
 ﻿@page "/login"
 @using Radzen
 @using Radzen.Blazor
-@using Microsoft.AspNetCore.Components.Web
-@using RoommateApp.Web.Client
 @using RoommateApp.Web.Client.Services
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject UsersClient UsersClient
-@inject NavigationManager Navigation
 @inject UserSessionService UserSession
 @inject ApartmentStateService ApartmentState
+@inject NavigationManager Navigation
 
-<div class="auth-container d-flex flex-column justify-content-center p-3 p-md-4 min-vh-100">
-    <!-- Top Bar -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="d-flex align-items-center gap-2">
-            <div class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
-                <RadzenIcon Icon="check_box" Style="font-size: 1.2rem;" />
-            </div>
-            <span class="fw-bold fs-5 text-dark">ChoreBoard</span>
+<div class="auth-viewport bg-light px-4 px-md-5 py-3">
+    <!-- Top Brand Header -->
+    <div class="auth-container d-flex align-items-center gap-2 pt-2">
+        <div class="text-white rounded-3 d-inline-flex align-items-center justify-content-center shadow-sm"
+             style="width: 38px; height: 38px; background-color: #6366f1;">
+            <RadzenIcon Icon="done_all" Style="font-size: 1.25rem;" />
         </div>
+        <span class="fw-bold fs-5 text-dark">ChoreBoard</span>
     </div>
 
-    <!-- Main Content Grid -->
-    <div class="row align-items-center my-auto g-4">
-        <!-- Left Hero Section -->
-        <div class="col-lg-6">
-            <h1 class="display-6 fw-bold text-dark lh-sm mb-3">
-                Keep your home clean,<br />
-                rewards high, and<br />
-                roommates happy.
-            </h1>
-            <p class="text-secondary fs-6 mb-4 style-max-width">
-                The chore tracking app designed specifically for shared households. Track weekly tasks, claim high-value chores, and compete for Friday night rewards.
-            </p>
-
-            <!-- Bottom Left Widget Box -->
-            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white style-max-width">
-                <div class="d-flex align-items-start gap-3 mb-3">
-                    <div class="bg-warning-subtle p-2 rounded-3 text-warning">
-                        <RadzenIcon Icon="star_outline" Style="font-size: 1.3rem;" />
-                    </div>
-                    <div>
-                        <h6 class="fw-bold text-dark m-0">Friday Pizza Night is unlocked!</h6>
-                        <span class="text-muted small">Collective points reach 5,240 / 5,000 pts this week.</span>
-                    </div>
-                </div>
-
-                <div class="row g-2">
-                    <div class="col-6">
-                        <div class="bg-light p-2 rounded-3 d-flex align-items-center gap-2">
-                            <span class="fw-bold fs-5 text-primary">14</span>
-                            <span class="text-muted extra-small fw-semibold">Chores Completed</span>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="bg-light p-2 rounded-3 d-flex align-items-center gap-2">
-                            <span class="fw-bold fs-5 text-success">5d</span>
-                            <span class="text-muted extra-small fw-semibold">Active Clean Streak</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Right Auth Form Card -->
-        <div class="col-lg-5 offset-lg-1">
-            <div class="card border-0 shadow-lg rounded-4 p-4 bg-white">
-                <!-- Tab Selector (Sign In / Sign Up) -->
-                <div class="bg-light p-1 rounded-pill d-flex mb-3">
-                    <button class="btn btn-sm rounded-pill flex-fill fw-bold @(isSignIn ? "btn-white shadow-sm text-dark" : "btn-light text-secondary border-0")"
-                            @onclick="() => SetTab(true)">
-                        Sign In
-                    </button>
-                    <button class="btn btn-sm rounded-pill flex-fill fw-bold @(!isSignIn ? "btn-white shadow-sm text-dark" : "btn-light text-secondary border-0")"
-                            @onclick="() => SetTab(false)">
-                        Sign Up
-                    </button>
-                </div>
-
-                <!-- Form Header -->
-                <h4 class="fw-bold text-dark mb-1">@(isSignIn ? "Welcome back" : "Create an account")</h4>
-                <p class="text-muted extra-small mb-3">
-                    @(isSignIn ? "Enter your room credentials to view the whiteboard." : "Fill in your details to join your roommate board.")
+    <!-- Main Centered Hero & Auth Card -->
+    <div class="auth-container my-auto">
+        <div class="row align-items-center justify-content-between g-4 g-xl-5">
+            <!-- Left Side: Value Proposition -->
+            <div class="col-lg-6">
+                <h1 class="fw-bold text-dark mb-3" style="font-size: clamp(2rem, 3.1vw, 2.75rem); letter-spacing: -1px; line-height: 1.15;">
+                    Keep your home clean, rewards high, and roommates happy.
+                </h1>
+                <p class="text-muted mb-4" style="max-width: 470px; font-size: 0.95rem; line-height: 1.6;">
+                    The chore tracking app designed specifically for shared households. Track weekly tasks, claim high-value chores, and compete for Friday night rewards.
                 </p>
 
-                @if (!string.IsNullOrEmpty(errorMessage))
-                {
-                    <div class="alert alert-danger py-2 extra-small mb-3">@errorMessage</div>
-                }
-
-                <!-- Dynamic Form Fields -->
-                <div class="d-flex flex-column gap-2">
-                    @if (!isSignIn)
-                    {
-                        <div>
-                            <label class="form-label extra-small fw-bold text-secondary mb-1">Teljes Név</label>
-                            <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle extra-small" placeholder="Kovács Péter" @bind="nameInput" />
+                <!-- Sample Stat Preview Card -->
+                <div class="card border-0 shadow-sm rounded-4 p-3 p-md-4 bg-white" style="max-width: 450px;">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                             style="width: 42px; height: 42px; background-color: #fef9c3;">
+                            <RadzenIcon Icon="star" Style="color: #ca8a04; font-size: 1.25rem;" />
                         </div>
+                        <div>
+                            <h6 class="fw-bold text-dark m-0">Friday Pizza Night is unlocked!</h6>
+                            <span class="text-muted extra-small">Collective points reach 5,240 / 5,000 pts this week.</span>
+                        </div>
+                    </div>
+                    <div class="row g-2 pt-2 border-top">
+                        <div class="col-6">
+                            <div class="p-2 px-3 bg-light rounded-3 d-flex align-items-center gap-2">
+                                <span class="fw-bold text-primary fs-5">14</span>
+                                <span class="text-muted extra-small">Chores Completed</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2 px-3 bg-light rounded-3 d-flex align-items-center gap-2">
+                                <span class="fw-bold text-success fs-5">5d</span>
+                                <span class="text-muted extra-small">Active Clean Streak</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Larger & Inward Auth Card -->
+            <div class="col-lg-6 d-flex justify-content-center justify-content-lg-end">
+                <div class="card border-0 shadow rounded-4 p-4 p-xl-5 bg-white w-100" style="max-width: 520px;">
+
+                    <!-- Tab Selector -->
+                    <div class="bg-light p-1 rounded-pill d-flex mb-4">
+                        <button type="button"
+                                class="btn btn-sm rounded-pill flex-fill fw-bold py-2 @(isSignIn ? "bg-white text-dark shadow-sm" : "text-secondary border-0")"
+                                @onclick="() => SetTab(true)">
+                            Sign In
+                        </button>
+                        <button type="button"
+                                class="btn btn-sm rounded-pill flex-fill fw-bold py-2 @(!isSignIn ? "bg-white text-dark shadow-sm" : "text-secondary border-0")"
+                                @onclick="() => SetTab(false)">
+                            Sign Up
+                        </button>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger py-2 px-3 extra-small mb-3 text-center rounded-3">@errorMessage</div>
                     }
 
-                    <div>
-                        <label class="form-label extra-small fw-bold text-secondary mb-1">E-mail cím</label>
-                        <input type="email" class="form-control rounded-3 py-2 px-3 border-light-subtle extra-small" placeholder="peter@example.com" @bind="emailInput" />
-                    </div>
+                    @if (isSignIn)
+                    {
+                        <!-- LOGIN FORM -->
+                        <div class="mb-3">
+                            <h3 class="fw-bold text-dark m-0 fs-4">Welcome back</h3>
+                            <p class="text-muted small mt-1 mb-0">Enter your room credentials to view the whiteboard.</p>
+                        </div>
 
-                    <div>
-                        <label class="form-label extra-small fw-bold text-secondary mb-1">Jelszó</label>
-                        <input type="password" class="form-control rounded-3 py-2 px-3 border-light-subtle extra-small" placeholder="••••••••" @bind="passwordInput" />
-                    </div>
+                        <div class="d-flex flex-column gap-3">
+                            <div>
+                                <label class="form-label extra-small fw-bold text-secondary mb-1">Email address</label>
+                                <input type="email" class="form-control rounded-3 py-2 px-3 border-light-subtle"
+                                       placeholder="peter@example.com" @bind="emailInput" />
+                            </div>
 
-                    <!-- Submit Button -->
-                    <button class="btn btn-primary rounded-3 py-2 fw-bold w-100 mt-2 extra-small"
-                            style="background-color: #6366f1; border: none;"
-                            @onclick="HandleSubmit" disabled="@isSubmitting">
-                        @if (isSubmitting)
-                        {
-                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                        }
-                        @(isSignIn ? "Sign In" : "Sign Up")
-                    </button>
+                            <div>
+                                <label class="form-label extra-small fw-bold text-secondary mb-1">Password</label>
+                                <input type="password" class="form-control rounded-3 py-2 px-3 border-light-subtle"
+                                       placeholder="••••••••" @bind="passwordInput" />
+                            </div>
+
+                            <button type="button"
+                                    class="btn btn-primary rounded-3 py-2 fw-bold w-100 mt-2"
+                                    style="background-color: #6366f1; border: none; height: 46px;"
+                                    @onclick="HandleSubmit" disabled="@isSubmitting">
+                                @if (isSubmitting)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                Sign In
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- REGISTER FORM -->
+                        <div class="mb-3">
+                            <h3 class="fw-bold text-dark m-0 fs-4">Create account</h3>
+                            <p class="text-muted small mt-1 mb-0">Join your household or set up a new cleaning board.</p>
+                        </div>
+
+                        <div class="d-flex flex-column gap-3">
+                            <div>
+                                <label class="form-label extra-small fw-bold text-secondary mb-1">Full Name</label>
+                                <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle"
+                                       placeholder="Peter Parker" @bind="nameInput" />
+                            </div>
+
+                            <div>
+                                <label class="form-label extra-small fw-bold text-secondary mb-1">Email address</label>
+                                <input type="email" class="form-control rounded-3 py-2 px-3 border-light-subtle"
+                                       placeholder="peter@example.com" @bind="emailInput" />
+                            </div>
+
+                            <div>
+                                <label class="form-label extra-small fw-bold text-secondary mb-1">Password</label>
+                                <input type="password" class="form-control rounded-3 py-2 px-3 border-light-subtle"
+                                       placeholder="••••••••" @bind="passwordInput" />
+                            </div>
+
+                            <button type="button"
+                                    class="btn btn-primary rounded-3 py-2 fw-bold w-100 mt-2"
+                                    style="background-color: #6366f1; border: none; height: 46px;"
+                                    @onclick="HandleSubmit" disabled="@isSubmitting">
+                                @if (isSubmitting)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                Create Account
+                            </button>
+                        </div>
+                    }
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Bottom Spacer for Balanced Vertical Centering -->
+    <div style="height: 16px;"></div>
 </div>
 
 @code {
@@ -172,7 +210,7 @@
             {
                 if (string.IsNullOrWhiteSpace(nameInput))
                 {
-                    errorMessage = "Kérjük, add meg a nevedet!";
+                    errorMessage = "Please enter your full name!";
                     return;
                 }
 
@@ -192,8 +230,8 @@
         }
         catch (Exception ex)
         {
-            errorMessage = "A művelet nem sikerült! Ellenőrizd az adataidat.";
-            Console.WriteLine($"Auth Hiba: {ex.Message}");
+            errorMessage = "Authentication failed! Please check your credentials.";
+            Console.WriteLine($"Auth Error: {ex.Message}");
         }
         finally
         {
@@ -203,20 +241,23 @@
 }
 
 <style>
+    .auth-viewport {
+        height: 100vh;
+        width: 100%;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
     .auth-container {
-        min-height: 100vh;
-        background-color: #f8fafc;
-    }
-
-    .style-max-width {
-        max-width: 520px;
-    }
-
-    .btn-white {
-        background-color: #ffffff;
+        width: 100%;
+        max-width: 1180px;
+        margin-left: auto;
+        margin-right: auto;
     }
 
     .extra-small {
-        font-size: 0.75rem;
+        font-size: 0.78rem;
     }
 </style>

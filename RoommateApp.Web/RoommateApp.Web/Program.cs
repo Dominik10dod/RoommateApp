@@ -36,6 +36,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<ChoreService>();
 builder.Services.AddScoped<ApartmentService>();
+builder.Services.AddHostedService<RoommateApp.Web.ChoreCleanupBackgroundService>();
 
 // HTTP Kliens & API Kliensek
 builder.Services.AddHttpClient();

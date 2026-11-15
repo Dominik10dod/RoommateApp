@@ -187,37 +187,19 @@
                             </div>
 
                             <div>
-                                <label class="form-label extra-small fw-bold text-secondary mb-1">Weekly Streak Reset Schedule</label>
-                                <div class="row g-2">
-                                    <div class="col-4">
-                                        <select class="form-select rounded-3 py-2 px-3 border-light-subtle extra-small"
-                                                @bind="resetDayInput">
-                                            <option value="Sunday">Sunday</option>
-                                            <option value="Monday">Monday</option>
-                                            <option value="Tuesday">Tuesday</option>
-                                            <option value="Wednesday">Wednesday</option>
-                                            <option value="Thursday">Thursday</option>
-                                            <option value="Friday">Friday</option>
-                                            <option value="Saturday">Saturday</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-4">
-                                        <select class="form-select rounded-3 py-2 px-3 border-light-subtle extra-small"
-                                                @bind="resetHourInput">
-                                            @for (int i = 1; i <= 12; i++)
-                                            {
-                                                <option value="@i">@i:00</option>
-                                            }
-                                        </select>
-                                    </div>
-                                    <div class="col-4">
-                                        <select class="form-select rounded-3 py-2 px-3 border-light-subtle extra-small"
-                                                @bind="resetAmPmInput">
-                                            <option value="AM">AM</option>
-                                            <option value="PM">PM</option>
-                                        </select>
-                                    </div>
-                                </div>
+                                <label class="form-label extra-small fw-bold text-secondary mb-1">Auto-Delete Chores Schedule</label>
+                                <select class="form-select rounded-3 py-2 px-3 border-light-subtle extra-small"
+                                        @bind="resetScheduleInput">
+                                    <option value="Weekly">Weekly</option>
+                                    <option value="BiWeekly">Every 2 Weeks</option>
+                                    <option value="Monthly">Monthly</option>
+                                    <option value="Quarterly">Every 3 Months</option>
+                                    <option value="SemiAnnually">Every 6 Months</option>
+                                    <option value="Yearly">Yearly</option>
+                                </select>
+                                <span class="text-muted d-block mt-1" style="font-size: 0.7rem;">
+                                    Completed ("Done") chores in this room will be automatically deleted from the database at the selected interval.
+                                </span>
                             </div>
 
                             <button class="btn btn-primary rounded-3 py-2 fw-bold w-100 mt-2 extra-small"
@@ -434,10 +416,8 @@
     private int rewardThresholdInput = 5000;
     private string rewardDescriptionInput = "Friday Pizza Night! 🍕";
 
-    // Split Reset Schedule
-    private string resetDayInput = "Sunday";
-    private int resetHourInput = 12;
-    private string resetAmPmInput = "AM";
+    
+    private string resetScheduleInput = "Weekly";
 
     private bool isSavingSettings = false;
     private string settingsMessage = string.Empty;
@@ -512,21 +492,10 @@
 
                 if (!string.IsNullOrWhiteSpace(ApartmentState.ResetSchedule))
                 {
-                    var parts = ApartmentState.ResetSchedule.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    if (parts.Length >= 1) resetDayInput = parts[0];
-                    if (parts.Length >= 2)
-                    {
-                        var timePart = parts[1];
-                        var hourStr = timePart.Split(':')[0];
-                        if (int.TryParse(hourStr, out int h))
-                        {
-                            resetHourInput = Math.Clamp(h, 1, 12);
-                        }
-                    }
-                    if (parts.Length >= 3)
-                    {
-                        resetAmPmInput = parts[2].ToUpper().Contains("PM") ? "PM" : "AM";
-                    }
+                    var validSchedules = new[] { "Weekly", "BiWeekly", "Monthly", "Quarterly", "SemiAnnually", "Yearly" };
+                    resetScheduleInput = validSchedules.Contains(ApartmentState.ResetSchedule)
+                        ? ApartmentState.ResetSchedule
+                        : "Weekly";
                 }
 
                 var users = await UsersClient.GetUsersByApartmentAsync(ApartmentState.Id);
@@ -689,8 +658,7 @@
 
         try
         {
-            string fullSchedule = $"{resetDayInput} {resetHourInput}:00 {resetAmPmInput}";
-            await ApartmentState.SaveAsync(apartmentNameInput, rewardThresholdInput, rewardDescriptionInput, fullSchedule);
+            await ApartmentState.SaveAsync(apartmentNameInput, rewardThresholdInput, rewardDescriptionInput, resetScheduleInput);
 
             isSettingsSuccess = true;
             settingsMessage = "Apartment settings saved successfully! Goal & Schedule updated live.";

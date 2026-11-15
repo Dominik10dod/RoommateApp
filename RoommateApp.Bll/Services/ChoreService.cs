@@ -8,11 +8,14 @@ namespace RoommateApp.Bll.Services
     public class ChoreService
     {
         private readonly AppDbContext _context;
+        private readonly ApartmentService _apartmentService;
 
-        public ChoreService(AppDbContext context)
+        public ChoreService(AppDbContext context, ApartmentService apartmentService)
         {
             _context = context;
+            _apartmentService = apartmentService;
         }
+
         public async Task<List<ChoreDto>> GetChoresAsync()
         {
             return await _context.Chores
@@ -31,11 +34,14 @@ namespace RoommateApp.Bll.Services
                 })
                 .ToListAsync();
         }
+
         public async Task<List<ChoreDto>> GetChoresByApartmentAsync(int apartmentId)
         {
+            await _apartmentService.CleanupExpiredChoresAsync(apartmentId);
+
             return await _context.Chores
                 .Include(c => c.User)
-                .Where(c => c.ApartmentId == apartmentId) 
+                .Where(c => c.ApartmentId == apartmentId)
                 .Select(c => new ChoreDto
                 {
                     Id = c.Id,
@@ -51,7 +57,7 @@ namespace RoommateApp.Bll.Services
                 .ToListAsync();
         }
 
-        // ÚJ: Elérhető kategóriák dinamikus kigyűjtése az adatbázisból
+        // Elérhető kategóriák dinamikus kigyűjtése az adatbázisból
         public async Task<List<string>> GetCategoriesAsync()
         {
             var defaults = new List<string> { "CLEANING", "MAINTENANCE", "SHOPPING" };
@@ -63,7 +69,7 @@ namespace RoommateApp.Bll.Services
             return defaults.Union(dbCategories).ToList();
         }
 
-        // ÚJ: Új feladat létrehozása az adatbázisban "ToDo" státusszal
+        // Új feladat létrehozása az adatbázisban "ToDo" státusszal
         public async Task<ChoreDto> CreateChoreAsync(CreateChoreDto dto)
         {
             var chore = new Chore

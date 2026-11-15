@@ -176,11 +176,11 @@
                             </div>
                         </div>
 
-                        <!-- Widget 2: Weekly Stats -->
+                        <!-- Widget 2: Dynamic Period Stats -->
                         <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
                             <div class="d-flex align-items-center gap-2 mb-3">
                                 <RadzenIcon Icon="bar_chart" Style="color: #6366f1; font-size: 1.2rem;" />
-                                <h3 class="h6 fw-bold m-0 text-dark">Weekly Stats</h3>
+                                <h3 class="h6 fw-bold m-0 text-dark">@GetStatsTitle()</h3>
                             </div>
 
                             <div class="row g-2 mb-3">
@@ -195,7 +195,7 @@
                                 <div class="col-6">
                                     <div class="p-2 bg-light rounded-3">
                                         <div class="text-uppercase text-muted fw-bold extra-small d-flex align-items-center gap-1">
-                                            <RadzenIcon Icon="check_circle" Style="color: #10b981; font-size: 0.9rem;" /> DONE WEEKLY
+                                            <RadzenIcon Icon="check_circle" Style="color: #10b981; font-size: 0.9rem;" /> DONE
                                         </div>
                                         <div class="h4 fw-bold m-0 mt-1 text-dark">@doneChoresCount <small class="text-muted fs-6 fw-normal">chores</small></div>
                                     </div>
@@ -337,6 +337,20 @@
     }
 
     private void TogglePanel() => isPanelHidden = !isPanelHidden;
+
+    private string GetStatsTitle()
+    {
+        return ApartmentState.ResetSchedule switch
+        {
+            "Weekly" => "Weekly Stats",
+            "BiWeekly" => "Every 2 Weeks Stats",
+            "Monthly" => "Monthly Stats",
+            "Quarterly" => "Every 3 Months Stats",
+            "SemiAnnually" => "Every 6 Months Stats",
+            "Yearly" => "Yearly Stats",
+            _ => "Weekly Stats"
+        };
+    }
 
     private void TogglePersonFilter()
     {
@@ -591,7 +605,7 @@
             draggedChore.Status = targetStatus;
 
             allChores.Remove(draggedChore);
-            allChores.Add(draggedChore);
+            allChores.Insert(0, draggedChore);
 
             if (targetStatus == "Done")
             {
