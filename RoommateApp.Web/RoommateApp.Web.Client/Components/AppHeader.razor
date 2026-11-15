@@ -1,339 +1,423 @@
 ﻿@using Radzen
 @using Radzen.Blazor
-@using RoommateApp.Web.Client
 @using RoommateApp.Web.Client.Services
-@implements IDisposable
-@inject ApartmentStateService ApartmentState
 @inject UserSessionService UserSession
+@inject ApartmentStateService ApartmentState
 @inject UsersClient UsersClient
 @inject ChoresClient ChoresClient
 @inject NavigationManager Navigation
+@implements IDisposable
 
-<!-- Top Header / Navbar -->
-<div class="card border-0 shadow-sm rounded-4 mb-4 p-3 bg-white">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-
-        <!-- Logo & Room name -->
-        <div class="d-flex align-items-center gap-3">
-            <div class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
-                <RadzenIcon Icon="check_box" Style="font-size: 1.5rem;" />
+<div class="mb-3 mb-md-4 border-bottom bg-white rounded-4 px-3 py-2 py-md-3 shadow-sm">
+    <!-- Top Row: Brand, Desktop Nav, Points & Profile -->
+    <div class="d-flex justify-content-between align-items-center gap-2">
+        <!-- Left: Brand / Logo -->
+        <div class="d-flex align-items-center gap-2 gap-md-3 min-w-0">
+            <div class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm flex-shrink-0"
+                 style="width: 36px; height: 36px; background-color: #6366f1 !important;">
+                <RadzenIcon Icon="done_all" Style="font-size: 1.15rem;" />
             </div>
-            <div>
-                <h1 class="h5 fw-bold m-0 text-dark">ChoreBoard</h1>
-                <span class="text-muted small">@ApartmentState.ApartmentName</span>
+            <div class="min-w-0">
+                <h1 class="h6 h5-md fw-bold m-0 text-dark text-truncate">ChoreBoard</h1>
+                <span class="text-muted extra-small d-block text-truncate">@ApartmentState.ApartmentName</span>
             </div>
         </div>
 
-        <!-- Navigation buttons -->
-        <div class="bg-light p-1 rounded-pill d-none d-md-flex gap-1">
-            <button class="btn btn-sm rounded-pill px-3 @(ActivePage == "Board" ? "btn-primary shadow-sm" : "btn-light text-secondary border-0")"
-                    @onclick='() => Navigation.NavigateTo("/")'>
+        <!-- Center: Desktop Navigation Links -->
+        <div class="d-none d-md-flex align-items-center gap-1 bg-light p-1 rounded-pill border">
+            <NavLink href="/" Match="NavLinkMatch.All" class="@($"nav-pill-link {(ActivePage == "Board" ? "active" : "")}")">
                 Roommate Board
-            </button>
-            <button class="btn btn-sm rounded-pill px-3 @(ActivePage == "Stats" ? "btn-primary shadow-sm" : "btn-light text-secondary border-0")"
-                    @onclick='() => Navigation.NavigateTo("/stats")'>
+            </NavLink>
+            <NavLink href="/stats" class="@($"nav-pill-link {(ActivePage == "Stats" ? "active" : "")}")">
                 Stats & Analytics
-            </button>
-            <button class="btn btn-sm rounded-pill px-3 @(ActivePage == "Controls" ? "btn-primary shadow-sm" : "btn-light text-secondary border-0")"
-                    @onclick='() => Navigation.NavigateTo("/controls")'>
+            </NavLink>
+            <NavLink href="/controls" class="@($"nav-pill-link {(ActivePage == "Controls" ? "active" : "")}")">
                 Controls
-            </button>
+            </NavLink>
         </div>
 
-        <!-- Right-side Notifications, Dynamic Score & Profile Menu -->
-        <div class="d-flex align-items-center gap-3">
-            
-
-            <!-- Dynamic user score -->
-            <div class="d-flex align-items-center gap-2 px-3 py-1 rounded-pill" style="background-color: #e0e7ff; color: #4338ca;">
-                <RadzenIcon Icon="emoji_events" Style="font-size: 1.2rem; color: #4338ca;" />
-                <span class="fw-bold small">@userPoints pts</span>
+        <!-- Right: Points Badge & Profile Dropdown -->
+        <div class="d-flex align-items-center gap-2 gap-md-3 position-relative flex-shrink-0">
+            <!-- Total Points Badge -->
+            <div class="d-flex align-items-center gap-1 px-2 px-md-3 py-1 py-md-2 rounded-pill shadow-sm"
+                 style="background-color: #eef2ff; color: #6366f1;">
+                <RadzenIcon Icon="emoji_events" Style="font-size: 1rem;" />
+                <span class="fw-bold extra-small">@totalUserPoints pts</span>
             </div>
 
-            <!-- Profile picture and menu -->
+            <!-- Profile Avatar Trigger -->
             <div class="position-relative">
-                <button class="btn p-0 border-0 bg-transparent" @onclick="ToggleProfileMenu">
-                    <img src="@AvatarUrl"
-                         class="rounded-circle shadow-sm border border-2 border-white"
-                         style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;"
-                         alt="User Profile" />
+                <button class="btn p-0 border-0 rounded-circle shadow-sm" @onclick="ToggleDropdown"
+                        style="width: 38px; height: 38px; overflow: hidden; background-color: #f1f5f9;">
+                    <img src="@($"https://api.dicebear.com/7.x/identicon/svg?seed={UserSession.CurrentUser?.Id ?? 1}")"
+                         alt="Avatar"
+                         class="w-100 h-100 object-fit-cover" />
                 </button>
 
-                @if (isProfileMenuOpen)
+                <!-- Dropdown Menu -->
+                @if (isDropdownOpen)
                 {
-                    <div class="dropdown-menu dropdown-menu-end show shadow-lg border-0 rounded-4 p-2 position-absolute end-0 mt-2"
-                         style="width: 260px; z-index: 1050; background-color: #ffffff;">
-
-                        <div class="px-3 py-2 border-bottom mb-2">
-                            <div class="fw-bold small text-dark">@(UserSession.CurrentUser?.Name ?? "Guest")</div>
-                            <div class="text-muted extra-small">@(UserSession.CurrentUser?.Email ?? "Not signed in")</div>
+                    <div class="position-absolute end-0 mt-2 bg-white rounded-4 shadow-lg border p-3" style="width: 270px; z-index: 1050;">
+                        <!-- User Info Header -->
+                        <div class="mb-3 pb-3 border-bottom">
+                            <div class="fw-bold text-dark small">@UserSession.CurrentUser?.Name</div>
+                            <div class="text-muted extra-small text-truncate">@UserSession.CurrentUser?.Email</div>
                         </div>
 
-                        <!-- Create a new room -->
-                        <button class="dropdown-item rounded-3 py-2 extra-small d-flex align-items-center gap-2 mb-1" @onclick="OpenCreateRoomModal">
-                            <RadzenIcon Icon="add_circle_outline" Style="font-size: 1.1rem; color: #6366f1;" />
-                            <span class="fw-semibold text-dark">Create a new room</span>
-                        </button>
-
-                        <!-- NEW: Join a room by code -->
-                        <button class="dropdown-item rounded-3 py-2 extra-small d-flex align-items-center gap-2" @onclick="OpenJoinRoomModal">
-                            <RadzenIcon Icon="group_add" Style="font-size: 1.1rem; color: #10b981;" />
-                            <span class="fw-semibold text-dark">Join a room</span>
-                        </button>
-
-                        <div class="dropdown-divider my-2"></div>
-
-                        <!-- List rooms in the profile menu -->
-                        <div class="px-3 py-1 text-uppercase text-muted extra-small fw-bold">Your rooms</div>
-                        @foreach (var room in myRooms)
-                        {
-                            <button class="dropdown-item rounded-3 py-2 extra-small d-flex justify-content-between align-items-center mb-1 @(room.Id == ApartmentState.Id ? "bg-primary-subtle text-primary fw-bold" : "text-secondary")"
-                                    @onclick="() => SwitchRoom(room.Id)">
-                                <div class="d-flex align-items-center gap-2">
-                                    <RadzenIcon Icon="home" Style="font-size: 1rem;" />
-                                    <span>@room.Name</span>
-                                </div>
-                                @if (room.Id == ApartmentState.Id)
-                                {
-                                    <RadzenIcon Icon="check" Style="font-size: 0.9rem; color: #4338ca;" />
-                                }
+                        <!-- Room Actions -->
+                        <div class="d-flex flex-column gap-1 mb-3">
+                            <button class="btn btn-light text-start btn-sm rounded-3 px-2 py-2 extra-small fw-semibold d-flex align-items-center gap-2 text-dark"
+                                    @onclick="OpenCreateModal">
+                                <RadzenIcon Icon="add_circle" Style="font-size: 1.1rem; color: #6366f1;" />
+                                Create new room
                             </button>
-                        }
+                            <button class="btn btn-light text-start btn-sm rounded-3 px-2 py-2 extra-small fw-semibold d-flex align-items-center gap-2 text-dark"
+                                    @onclick="OpenJoinModal">
+                                <RadzenIcon Icon="group_add" Style="font-size: 1.1rem; color: #10b981;" />
+                                Join room
+                            </button>
+                        </div>
 
-                        <div class="dropdown-divider my-2"></div>
+                        <!-- Rooms List Section -->
+                        <div class="mb-3 pb-3 border-bottom">
+                            <div class="text-uppercase text-muted fw-bold mb-2" style="font-size: 0.65rem; letter-spacing: 0.5px;">YOUR ROOMS</div>
+                            <div class="d-flex flex-column gap-1 max-h-150 overflow-y-auto">
+                                @foreach (var room in userApartments)
+                                {
+                                    bool isCurrent = room.Id == ApartmentState.Id;
+                                    <button class="@($"btn btn-sm text-start rounded-3 px-2 py-2 extra-small d-flex justify-content-between align-items-center {(isCurrent ? "btn-primary text-white" : "btn-light text-dark")}")"
+                                            @onclick="() => SwitchRoom(room.Id)">
+                                        <div class="d-flex align-items-center gap-2 text-truncate">
+                                            <RadzenIcon Icon="home" Style="font-size: 0.95rem;" />
+                                            <span class="text-truncate fw-semibold">@room.Name</span>
+                                        </div>
+                                        @if (isCurrent)
+                                        {
+                                            <RadzenIcon Icon="check" Style="font-size: 0.95rem;" />
+                                        }
+                                    </button>
+                                }
+                            </div>
+                        </div>
 
-                        <button class="dropdown-item rounded-3 py-2 extra-small text-danger d-flex align-items-center gap-2" @onclick="Logout">
-                            <RadzenIcon Icon="logout" Style="font-size: 1.1rem; color: #ef4444;" />
-                            <span class="fw-bold">Sign out</span>
+                        <!-- Sign Out -->
+                        <button class="btn btn-light text-start btn-sm rounded-3 px-2 py-2 extra-small fw-bold d-flex align-items-center gap-2 text-danger w-100"
+                                @onclick="Logout">
+                            <RadzenIcon Icon="logout" Style="font-size: 1.1rem;" />
+                            Sign out
                         </button>
                     </div>
                 }
             </div>
         </div>
     </div>
+
+    <!-- Mobile Navigation Tabs (Visible only below md) -->
+    <div class="d-flex d-md-none justify-content-around align-items-center mt-2 pt-2 border-top">
+        <NavLink href="/" Match="NavLinkMatch.All" class="@($"mobile-nav-tab {(ActivePage == "Board" ? "active" : "")}")">
+            <RadzenIcon Icon="check_box" Style="font-size: 1.25rem;" />
+            <span>Board</span>
+        </NavLink>
+        <NavLink href="/stats" class="@($"mobile-nav-tab {(ActivePage == "Stats" ? "active" : "")}")">
+            <RadzenIcon Icon="bar_chart" Style="font-size: 1.25rem;" />
+            <span>Stats</span>
+        </NavLink>
+        <NavLink href="/controls" class="@($"mobile-nav-tab {(ActivePage == "Controls" ? "active" : "")}")">
+            <RadzenIcon Icon="bolt" Style="font-size: 1.25rem;" />
+            <span>Controls</span>
+        </NavLink>
+    </div>
 </div>
 
-<!-- Create a new room modal -->
-@if (showCreateRoomModal)
+<!-- MODAL: CREATE OR JOIN ROOM -->
+@if (showActionModal)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-        <div class="modal-dialog modal-dialog-centered">
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.75); z-index: 2000; backdrop-filter: blur(4px);">
+        <div class="modal-dialog modal-dialog-centered px-3">
             <div class="modal-content border-0 shadow-lg rounded-4 p-4 bg-white">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="modal-title fw-bold text-dark">Create a new room</h5>
-                    <button type="button" class="btn-close" @onclick="CloseCreateRoomModal"></button>
-                </div>
-                <div class="modal-body py-2 px-0">
-                    <div class="mb-3">
-                        <label class="form-label extra-small fw-bold text-secondary">Room / Apartment name</label>
-                        <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle"
-                               placeholder="e.g. Apartment 5C or Budapest Hideaway" @bind="newRoomNameInput" />
+                <div class="text-center mb-4">
+                    <div class="bg-primary-subtle text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 56px; height: 56px; background-color: #eef2ff !important;">
+                        <RadzenIcon Icon="@(isCreatingNewRoom ? "add_business" : "group_add")" Style="font-size: 2rem; color: #6366f1;" />
                     </div>
+                    <h4 class="fw-bold text-dark m-0">@(isCreatingNewRoom ? "Create New Room" : "Join Room")</h4>
+                    <p class="text-muted small mt-1">@(isCreatingNewRoom ? "Set up a shared household whiteboard." : "Enter your invite code to connect.")</p>
                 </div>
-                <div class="d-flex justify-content-end gap-2 pt-2">
-                    <button class="btn btn-light btn-sm rounded-pill px-3 extra-small" @onclick="CloseCreateRoomModal">Cancel</button>
-                    <button class="btn btn-primary btn-sm rounded-pill px-4 extra-small fw-bold"
-                            style="background-color: #6366f1; border: none;" @onclick="CreateNewRoom">
-                        Create
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
 
-<!-- NEW: Join a room modal -->
-@if (showJoinRoomModal)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4 p-4 bg-white">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="modal-title fw-bold text-dark">Join a room</h5>
-                    <button type="button" class="btn-close" @onclick="CloseJoinRoomModal"></button>
-                </div>
-                <div class="modal-body py-2 px-0">
-                    @if (!string.IsNullOrEmpty(joinRoomErrorMessage))
-                    {
-                        <div class="alert alert-danger py-2 extra-small mb-3">@joinRoomErrorMessage</div>
-                    }
+                @if (!string.IsNullOrEmpty(modalError))
+                {
+                    <div class="alert alert-danger py-2 extra-small mb-3 text-center rounded-3">@modalError</div>
+                }
 
+                @if (isCreatingNewRoom)
+                {
                     <div class="mb-3">
-                        <label class="form-label extra-small fw-bold text-secondary">Invite code</label>
-                        <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle text-uppercase"
-                               placeholder="pl. APT4B-8X92" @bind="joinInviteCodeInput" />
-                         <span class="text-muted extra-small mt-1 d-block">Ask the room admin for the 8-character invite code.</span>
+                        <label class="form-label extra-small fw-bold text-secondary">Room Name</label>
+                        <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle extra-small"
+                               placeholder="e.g. Downtown Loft or Apt 4B" @bind="newRoomName" />
                     </div>
-                </div>
-                <div class="d-flex justify-content-end gap-2 pt-2">
-                    <button class="btn btn-light btn-sm rounded-pill px-3 extra-small" @onclick="CloseJoinRoomModal">Cancel</button>
-                    <button class="btn btn-success btn-sm rounded-pill px-4 extra-small fw-bold"
-                            style="background-color: #10b981; border: none;" @onclick="JoinRoomByCode">
-                        Joining
-                    </button>
-                </div>
+                    <div class="d-flex gap-2 mt-3">
+                        <button class="btn btn-light rounded-3 py-2 fw-bold flex-fill extra-small text-secondary" @onclick="CloseModal">Cancel</button>
+                        <button class="btn btn-primary rounded-3 py-2 fw-bold flex-fill extra-small" style="background-color: #6366f1; border: none;" @onclick="ExecuteCreateRoom" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            }
+                            Create Room
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="mb-3">
+                        <label class="form-label extra-small fw-bold text-secondary">Invite Code</label>
+                        <input type="text" class="form-control rounded-3 py-2 px-3 border-light-subtle extra-small text-uppercase"
+                               placeholder="e.g. APT4B-8X92" @bind="joinInviteCode" />
+                    </div>
+                    <div class="d-flex gap-2 mt-3">
+                        <button class="btn btn-light rounded-3 py-2 fw-bold flex-fill extra-small text-secondary" @onclick="CloseModal">Cancel</button>
+                        <button class="btn btn-success rounded-3 py-2 fw-bold flex-fill extra-small" style="background-color: #10b981; border: none;" @onclick="ExecuteJoinRoom" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            }
+                            Join Room
+                        </button>
+                    </div>
+                }
             </div>
         </div>
     </div>
 }
 
 @code {
-    [Parameter]
-    public string ActivePage { get; set; } = "Board";
+    [Parameter] public string ActivePage { get; set; } = "Board";
 
-    private bool isProfileMenuOpen = false;
-    private bool showCreateRoomModal = false;
-    private bool showJoinRoomModal = false;
+    private bool isDropdownOpen = false;
+    private List<ApartmentDto> userApartments = new();
+    private int totalUserPoints = 0;
 
-    private string newRoomNameInput = string.Empty;
-    private string joinInviteCodeInput = string.Empty;
-    private string joinRoomErrorMessage = string.Empty;
+    private bool showActionModal = false;
+    private bool isCreatingNewRoom = true;
+    private string newRoomName = string.Empty;
+    private string joinInviteCode = string.Empty;
+    private string modalError = string.Empty;
+    private bool isSubmitting = false;
 
-    private int userPoints = 0;
-
-    private string AvatarUrl => UserSession.CurrentUser != null
-        ? $"https://api.dicebear.com/7.x/identicon/svg?seed={UserSession.CurrentUser.Id}"
-        : "https://api.dicebear.com/7.x/identicon/svg?seed=default";
-
-    private List<ApartmentDto> myRooms = new();
-
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        ApartmentState.OnChange += StateHasChanged;
-        UserSession.OnChange += StateHasChanged;
-
-        await LoadUserApartments();
-        await CalculateUserPoints();
+        ApartmentState.OnChange += HandleStateChanged;
+        UserSession.OnChange += HandleStateChanged;
+        UserSession.OnPointsChanged += HandleStateChanged;
     }
 
-    private async Task LoadUserApartments()
+    protected override async Task OnParametersSetAsync()
     {
-        int currentUserId = UserSession.CurrentUser?.Id ?? 1;
+        await LoadHeaderDataAsync();
+    }
+
+    private async void HandleStateChanged()
+    {
+        await LoadHeaderDataAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadHeaderDataAsync()
+    {
+        if (!UserSession.IsLoggedIn || UserSession.CurrentUser == null) return;
 
         try
         {
+            int currentUserId = UserSession.CurrentUser.Id;
             var rooms = await UsersClient.GetUserApartmentsAsync(currentUserId);
-            if (rooms != null && rooms.Any())
-            {
-                myRooms = rooms.ToList();
+            userApartments = rooms?.ToList() ?? new List<ApartmentDto>();
 
-                if (ApartmentState.Id == 0)
-                {
-                    var activeRoom = myRooms.First();
-                    await ApartmentState.LoadAsync(activeRoom.Id);
-                }
+            if (ApartmentState.Id > 0)
+            {
+                var allChores = await ChoresClient.GetChoresByApartmentAsync(ApartmentState.Id);
+                totalUserPoints = allChores?
+                    .Where(c => c.UserId == currentUserId && string.Equals(c.Status, "Done", StringComparison.OrdinalIgnoreCase))
+                    .Sum(c => c.Points) ?? 0;
+            }
+            else
+            {
+                totalUserPoints = 0;
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error while loading apartments: {ex.Message}");
+            Console.WriteLine($"Error loading header data: {ex.Message}");
         }
     }
 
-    private async Task CreateNewRoom()
+    private async Task ToggleDropdown()
     {
-        if (string.IsNullOrWhiteSpace(newRoomNameInput)) return;
+        isDropdownOpen = !isDropdownOpen;
+        if (isDropdownOpen)
+        {
+            await LoadHeaderDataAsync();
+        }
+    }
 
-        int userId = UserSession.CurrentUser?.Id ?? 1;
+    private async Task SwitchRoom(int apartmentId)
+    {
+        isDropdownOpen = false;
+        if (apartmentId == ApartmentState.Id) return;
 
+        await ApartmentState.LoadAsync(apartmentId);
+    }
+
+    private void OpenCreateModal()
+    {
+        isDropdownOpen = false;
+        isCreatingNewRoom = true;
+        newRoomName = string.Empty;
+        modalError = string.Empty;
+        showActionModal = true;
+    }
+
+    private void OpenJoinModal()
+    {
+        isDropdownOpen = false;
+        isCreatingNewRoom = false;
+        joinInviteCode = string.Empty;
+        modalError = string.Empty;
+        showActionModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showActionModal = false;
+    }
+
+    private async Task ExecuteCreateRoom()
+    {
+        if (string.IsNullOrWhiteSpace(newRoomName))
+        {
+            modalError = "Please enter a room name!";
+            return;
+        }
+
+        isSubmitting = true;
+        modalError = string.Empty;
         try
         {
-            var newApt = await UsersClient.CreateApartmentAsync(userId, newRoomNameInput.Trim());
-            if (newApt != null)
+            int userId = UserSession.CurrentUser?.Id ?? 1;
+            var created = await UsersClient.CreateApartmentAsync(userId, newRoomName.Trim());
+            if (created != null)
             {
-                await LoadUserApartments();
-                await ApartmentState.LoadAsync(newApt.Id);
+                showActionModal = false;
+                await ApartmentState.LoadAsync(created.Id);
             }
-
-            CloseCreateRoomModal();
-            Navigation.NavigateTo("/", forceLoad: false); // FIXED: Does not reload the browser, so the session is preserved!
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error while creating apartment: {ex.Message}");
+            modalError = "Failed to create room.";
+            Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            isSubmitting = false;
         }
     }
 
-    private async Task JoinRoomByCode()
+    private async Task ExecuteJoinRoom()
     {
-        if (string.IsNullOrWhiteSpace(joinInviteCodeInput)) return;
+        if (string.IsNullOrWhiteSpace(joinInviteCode))
+        {
+            modalError = "Please enter an invite code!";
+            return;
+        }
 
-        int userId = UserSession.CurrentUser?.Id ?? 1;
-        joinRoomErrorMessage = string.Empty;
-
+        isSubmitting = true;
+        modalError = string.Empty;
         try
         {
-            await UsersClient.JoinApartmentAsync(userId, joinInviteCodeInput.Trim().ToUpper());
-            await LoadUserApartments();
+            int userId = UserSession.CurrentUser?.Id ?? 1;
+            await UsersClient.JoinApartmentAsync(userId, joinInviteCode.Trim().ToUpper());
+            var rooms = await UsersClient.GetUserApartmentsAsync(userId);
+            var joined = rooms?.FirstOrDefault(r => r.InviteCode == joinInviteCode.Trim().ToUpper()) ?? rooms?.LastOrDefault();
 
-             // Switch to the newly joined room
-            var joinedRoom = myRooms.FirstOrDefault(r => r.InviteCode == joinInviteCodeInput.Trim().ToUpper());
-            if (joinedRoom != null)
+            if (joined != null)
             {
-                await ApartmentState.LoadAsync(joinedRoom.Id);
+                showActionModal = false;
+                await ApartmentState.LoadAsync(joined.Id);
             }
-
-            CloseJoinRoomModal();
-            Navigation.NavigateTo("/", forceLoad: false);
+            else
+            {
+                modalError = "Invalid invite code!";
+            }
         }
         catch (Exception ex)
         {
-            joinRoomErrorMessage = "Invalid invite code or you have already joined this apartment!";
-            Console.WriteLine($"Error while joining apartment: {ex.Message}");
+            modalError = "Invalid invite code or already joined.";
+            Console.WriteLine(ex.Message);
         }
-    }
-
-    private async Task SwitchRoom(int roomId)
-    {
-        isProfileMenuOpen = false;
-        var room = myRooms.FirstOrDefault(r => r.Id == roomId);
-        if (room != null)
+        finally
         {
-            await ApartmentState.LoadAsync(room.Id);
-            await CalculateUserPoints();
-             Navigation.NavigateTo("/", forceLoad: false); // FIXED: Does not reload the browser!
+            isSubmitting = false;
         }
     }
-
-    private async Task CalculateUserPoints()
-    {
-        if (UserSession.CurrentUser != null && ApartmentState.Id > 0)
-        {
-            try
-            {
-                var chores = await ChoresClient.GetChoresByApartmentAsync(ApartmentState.Id);
-                if (chores != null)
-                {
-                    userPoints = chores
-                        .Where(c => c.UserId == UserSession.CurrentUser.Id && c.Status == "Done")
-                        .Sum(c => c.Points);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error while calculating user points: {ex.Message}");
-            }
-        }
-    }
-
-    private void ToggleProfileMenu() => isProfileMenuOpen = !isProfileMenuOpen;
-
-    private void OpenCreateRoomModal() { isProfileMenuOpen = false; showCreateRoomModal = true; }
-    private void CloseCreateRoomModal() { showCreateRoomModal = false; newRoomNameInput = string.Empty; }
-
-    private void OpenJoinRoomModal() { isProfileMenuOpen = false; showJoinRoomModal = true; joinRoomErrorMessage = string.Empty; }
-    private void CloseJoinRoomModal() { showJoinRoomModal = false; joinInviteCodeInput = string.Empty; joinRoomErrorMessage = string.Empty; }
 
     private void Logout()
     {
-        isProfileMenuOpen = false;
         UserSession.Logout();
+        ApartmentState.Reset();
         Navigation.NavigateTo("/login");
     }
 
     public void Dispose()
     {
-        ApartmentState.OnChange -= StateHasChanged;
-        UserSession.OnChange -= StateHasChanged;
+        ApartmentState.OnChange -= HandleStateChanged;
+        UserSession.OnChange -= HandleStateChanged;
+        UserSession.OnPointsChanged -= HandleStateChanged;
     }
 }
+
+<style>
+    .nav-pill-link {
+        padding: 6px 16px;
+        border-radius: 50rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #64748b;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+        .nav-pill-link:hover {
+            color: #0f172a;
+        }
+
+        .nav-pill-link.active {
+            background-color: #ffffff;
+            color: #6366f1;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
+        }
+
+    .mobile-nav-tab {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        text-decoration: none;
+        color: #64748b;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 4px 16px;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s ease;
+    }
+
+        .mobile-nav-tab.active {
+            color: #6366f1;
+            border-bottom-color: #6366f1;
+        }
+
+    .extra-small {
+        font-size: 0.75rem;
+    }
+
+    .max-h-150 {
+        max-height: 150px;
+    }
+</style>

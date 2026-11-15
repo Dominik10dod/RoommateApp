@@ -3,6 +3,7 @@ using Radzen;
 using RoommateApp.Bll.Services;
 using RoommateApp.Db.Context;
 using RoommateApp.Web.Components;
+using RoommateApp.Web.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 

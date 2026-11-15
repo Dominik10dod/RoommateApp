@@ -8,6 +8,7 @@ namespace RoommateApp.Web.Client.Services
         public bool IsLoggedIn => CurrentUser != null;
 
         public event Action? OnChange;
+        public event Action? OnPointsChanged;
 
         public void SetUser(UserDto user)
         {
@@ -20,6 +21,8 @@ namespace RoommateApp.Web.Client.Services
             CurrentUser = null;
             NotifyStateChanged();
         }
+
+        public void NotifyPointsChanged() => OnPointsChanged?.Invoke();
 
         private void NotifyStateChanged() => OnChange?.Invoke();
     }

@@ -19,9 +19,12 @@
     <AppHeader ActivePage="Stats" />
 
     <!-- Subheader -->
-    <div class="mb-4">
-        <h2 class="h3 fw-bold m-0 text-dark">Stats & Household Analytics</h2>
-        <p class="text-muted small m-0 mt-1">Analyze points progress, distribution of chores, and weekly top performance benchmarks.</p>
+    <div class="mb-3 mb-md-4">
+        <h2 class="h4 h3-md fw-bold m-0 text-dark">
+            <span class="d-none d-md-inline">Stats & Household Analytics</span>
+            <span class="d-inline d-md-none">Household Analytics</span>
+        </h2>
+        <p class="text-muted extra-small small-md m-0 mt-1">Analyze points progress, distribution of chores, and weekly top performance benchmarks.</p>
     </div>
 
     @if (isLoading)
@@ -34,39 +37,39 @@
     }
     else
     {
-        <!-- Top Row: 4 KPI Cards -->
-        <div class="row g-3 mb-4">
-            <div class="col-12 col-sm-6 col-xl-3">
+        <!-- Top Row: 4 KPI Cards (2x2 Grid on mobile, 4-in-a-row on desktop) -->
+        <div class="row g-2 g-md-3 mb-3 mb-md-4">
+            <div class="col-6 col-xl-3">
                 <div class="card border shadow-none rounded-4 p-3 p-md-4 bg-white h-100 analytics-card">
-                    <span class="text-uppercase text-muted fw-bold kpi-label">AVG CHORES / WEEK</span>
-                    <div class="h3 fw-bold text-dark m-0 mt-2">
-                        @avgChoresPerWeek.ToString("0.#", CultureInfo.InvariantCulture) <span class="fs-4 fw-bold">chores</span>
+                    <span class="text-uppercase text-muted fw-bold kpi-label">AVG CHORES / WK</span>
+                    <div class="h4 h3-md fw-bold text-dark m-0 mt-1 mt-md-2">
+                        @avgChoresPerWeek.ToString("0.#", CultureInfo.InvariantCulture) <span class="fs-6 fs-md-4 fw-bold">chores</span>
                     </div>
                 </div>
             </div>
 
-            <div class="col-12 col-sm-6 col-xl-3">
+            <div class="col-6 col-xl-3">
                 <div class="card border shadow-none rounded-4 p-3 p-md-4 bg-white h-100 analytics-card">
-                    <span class="text-uppercase text-muted fw-bold kpi-label">AVG POINTS / PERSON</span>
-                    <div class="h3 fw-bold text-dark m-0 mt-2">
-                        @avgPointsPerPerson.ToString("N0", CultureInfo.InvariantCulture) <span class="fs-4 fw-bold">pts</span>
+                    <span class="text-uppercase text-muted fw-bold kpi-label">AVG PTS / PERSON</span>
+                    <div class="h4 h3-md fw-bold text-dark m-0 mt-1 mt-md-2">
+                        @avgPointsPerPerson.ToString("N0", CultureInfo.InvariantCulture) <span class="fs-6 fs-md-4 fw-bold">pts</span>
                     </div>
                 </div>
             </div>
 
-            <div class="col-12 col-sm-6 col-xl-3">
+            <div class="col-6 col-xl-3">
                 <div class="card border shadow-none rounded-4 p-3 p-md-4 bg-white h-100 analytics-card">
-                    <span class="text-uppercase text-muted fw-bold kpi-label">MONTHLY COMPLETION</span>
-                    <div class="h3 fw-bold text-dark m-0 mt-2">
+                    <span class="text-uppercase text-muted fw-bold kpi-label">COMPLETION RATE</span>
+                    <div class="h4 h3-md fw-bold text-dark m-0 mt-1 mt-md-2">
                         @monthlyCompletionRate.ToString("0.#", CultureInfo.InvariantCulture)%
                     </div>
                 </div>
             </div>
 
-            <div class="col-12 col-sm-6 col-xl-3">
+            <div class="col-6 col-xl-3">
                 <div class="card border shadow-none rounded-4 p-3 p-md-4 bg-white h-100 analytics-card">
                     <span class="text-uppercase text-muted fw-bold kpi-label">TOP CATEGORY</span>
-                    <div class="h3 fw-bold text-dark m-0 mt-2">
+                    <div class="h4 h3-md fw-bold text-dark m-0 mt-1 mt-md-2 text-truncate">
                         @topCategoryName
                     </div>
                 </div>
@@ -74,15 +77,15 @@
         </div>
 
         <!-- Bottom Row: Left Stacked Bar Chart & Right Donut + Hall of Fame -->
-        <div class="row g-4 align-items-stretch">
+        <div class="row g-3 g-md-4 align-items-stretch">
             <!-- Left 8 Columns: Roommate Weekly Performance -->
             <div class="col-lg-8">
-                <div class="card border shadow-none rounded-4 p-4 bg-white h-100 analytics-card d-flex flex-column justify-content-between">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-                        <h3 class="h6 fw-bold m-0 text-dark">Roommate Weekly Performance</h3>
+                <div class="card border shadow-none rounded-4 p-3 p-md-4 bg-white h-100 analytics-card d-flex flex-column justify-content-between">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 mb-md-4">
+                        <h3 class="h6 fw-bold m-0 text-dark">Weekly Performance</h3>
 
                         <!-- Dynamic Roommate Legend -->
-                        <div class="d-flex flex-wrap align-items-center gap-3">
+                        <div class="d-flex flex-wrap align-items-center gap-2 gap-md-3">
                             @foreach (var user in allUsers)
                             {
                                 <div class="d-flex align-items-center gap-1">
@@ -94,11 +97,11 @@
                     </div>
 
                     <!-- Stacked Bar Chart Area -->
-                    <div class="d-flex align-items-end justify-content-around pt-3 pb-1 px-2 flex-grow-1" style="min-height: 270px;">
+                    <div class="d-flex align-items-end justify-content-around pt-2 pb-1 px-1 px-md-2 flex-grow-1 chart-wrapper">
                         @foreach (var week in weeklyPerformance)
                         {
                             <div class="d-flex flex-column align-items-center flex-fill" style="max-width: 80px;">
-                                <div class="d-flex flex-column-reverse justify-content-start align-items-center w-100" style="height: 220px;">
+                                <div class="d-flex flex-column-reverse justify-content-start align-items-center w-100 bar-column-height">
                                     @if (week.TotalPoints > 0 && maxWeeklyPoints > 0)
                                     {
                                         @foreach (var seg in week.UserSegments)
@@ -118,7 +121,7 @@
                                         <div class="empty-bar-placeholder" title="@($"{week.Label}: 0 pts")"></div>
                                     }
                                 </div>
-                                <span class="extra-small text-muted fw-semibold mt-3">@week.Label</span>
+                                <span class="extra-small text-muted fw-semibold mt-2 mt-md-3">@week.Label</span>
                             </div>
                         }
                     </div>
@@ -126,11 +129,11 @@
             </div>
 
             <!-- Right 4 Columns: Chore Category Share & Weekly Hall of Fame -->
-            <div class="col-lg-4 d-flex flex-column gap-4">
+            <div class="col-lg-4 d-flex flex-column gap-3 gap-md-4">
 
                 <!-- Card 1: Chore Category Share -->
-                <div class="card border shadow-none rounded-4 p-4 bg-white analytics-card">
-                    <h3 class="h6 fw-bold m-0 text-dark mb-4">Chore Category Share</h3>
+                <div class="card border shadow-none rounded-4 p-3 p-md-4 bg-white analytics-card">
+                    <h3 class="h6 fw-bold m-0 text-dark mb-3 mb-md-4">Chore Category Share</h3>
 
                     <div class="d-flex align-items-center justify-content-between gap-3">
                         <!-- Donut Chart -->
@@ -139,15 +142,15 @@
                         </div>
 
                         <!-- Category Legend -->
-                        <div class="d-flex flex-column gap-2 flex-grow-1 ps-2">
+                        <div class="d-flex flex-column gap-2 flex-grow-1 ps-1 ps-md-2 min-w-0">
                             @foreach (var cat in categoryShares)
                             {
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div class="d-flex align-items-center gap-2">
+                                <div class="d-flex justify-content-between align-items-center gap-2">
+                                    <div class="d-flex align-items-center gap-2 min-w-0">
                                         <span class="legend-dot" style="background-color: @cat.Color;"></span>
-                                        <span class="extra-small fw-semibold text-secondary">@cat.DisplayName</span>
+                                        <span class="extra-small fw-semibold text-secondary text-truncate">@cat.DisplayName</span>
                                     </div>
-                                    <span class="extra-small fw-bold text-dark">@cat.Percentage%</span>
+                                    <span class="extra-small fw-bold text-dark flex-shrink-0">@cat.Percentage%</span>
                                 </div>
                             }
                         </div>
@@ -155,7 +158,7 @@
                 </div>
 
                 <!-- Card 2: Weekly Hall of Fame -->
-                <div class="card border shadow-none rounded-4 p-4 bg-white analytics-card flex-grow-1">
+                <div class="card border shadow-none rounded-4 p-3 p-md-4 bg-white analytics-card flex-grow-1">
                     <h3 class="h6 fw-bold m-0 text-dark mb-3">Weekly Hall of Fame 🏆</h3>
 
                     @if (!hallOfFameEntries.Any())
@@ -172,18 +175,18 @@
                                 var entry = hallOfFameEntries[i];
                                 bool isLast = i == hallOfFameEntries.Count - 1;
 
-                                <div class="d-flex justify-content-between align-items-center py-2 @(isLast ? "" : "border-bottom border-light-subtle")">
-                                    <div class="d-flex align-items-center gap-2">
+                                <div class="@($"d-flex justify-content-between align-items-center gap-2 py-2 {(isLast ? "" : "border-bottom border-light-subtle")}")">
+                                    <div class="d-flex align-items-center gap-2 min-w-0">
                                         <img src="@($"https://api.dicebear.com/7.x/identicon/svg?seed={entry.UserId}")"
                                              alt="@entry.UserName"
-                                             class="rounded-circle"
+                                             class="rounded-circle flex-shrink-0"
                                              style="width: 34px; height: 34px; object-fit: cover; background-color: #f1f5f9;" />
-                                        <div>
-                                            <div class="fw-bold text-dark extra-small">@entry.UserName</div>
+                                        <div class="min-w-0">
+                                            <div class="fw-bold text-dark extra-small text-truncate">@entry.UserName</div>
                                             <div class="text-muted" style="font-size: 0.7rem;">@entry.WeekTitle</div>
                                         </div>
                                     </div>
-                                    <span class="fw-bold extra-small" style="color: #6366f1;">
+                                    <span class="fw-bold extra-small flex-shrink-0" style="color: #6366f1;">
                                         @entry.Points.ToString("N0", CultureInfo.InvariantCulture) pts
                                     </span>
                                 </div>
@@ -221,15 +224,14 @@
     // Hall of Fame Data
     private List<HallOfFameModel> hallOfFameEntries = new();
 
-    // Color Palette for users
     private readonly string[] roommatePalette = new[]
     {
-        "#6366f1", // Indigo / Slate Blue
-        "#2e6f56", // Forest Green
-        "#e0b03b", // Mustard Gold
-        "#ec4899", // Rose
-        "#0ea5e9", // Sky Blue
-        "#f97316"  // Orange
+        "#6366f1",
+        "#2e6f56",
+        "#e0b03b",
+        "#ec4899",
+        "#0ea5e9",
+        "#f97316"
     };
 
     public class WeekPerformanceModel
@@ -344,7 +346,6 @@
 
         var choreDates = allChores.ToDictionary(c => c.Id, ParseChoreDate);
 
-        // 1. AVG CHORES / WEEK
         if (completedChores.Any())
         {
             var distinctWeeks = completedChores
@@ -359,12 +360,10 @@
             avgChoresPerWeek = 0;
         }
 
-        // 2. AVG POINTS / PERSON
         int totalEarnedPoints = completedChores.Sum(c => c.Points);
         int memberCount = Math.Max(1, allUsers.Count);
         avgPointsPerPerson = (int)Math.Round((double)totalEarnedPoints / memberCount);
 
-        // 3. MONTHLY COMPLETION
         var thirtyDaysAgo = DateTime.Today.AddDays(-30);
         var recentChores = allChores
             .Where(c => choreDates[c.Id] >= thirtyDaysAgo)
@@ -381,7 +380,6 @@
             monthlyCompletionRate = 0;
         }
 
-        // 4. TOP CATEGORY
         var categorySource = completedChores.Any() ? completedChores : allChores;
         if (categorySource.Any())
         {
@@ -399,13 +397,8 @@
             topCategoryName = "None";
         }
 
-        // 5. ROOMMATE WEEKLY PERFORMANCE
         BuildWeeklyPerformance(completedChores, choreDates);
-
-        // 6. CHORE CATEGORY SHARE (Donut Chart)
         BuildCategoryShare(allChores);
-
-        // 7. WEEKLY HALL OF FAME
         BuildHallOfFame(completedChores, choreDates);
     }
 
@@ -451,13 +444,11 @@
     {
         var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-        // Initialize with all known room categories so they appear even if 0 count
         foreach (var rc in roomCategories)
         {
             counts[rc.Name] = 0;
         }
 
-        // Ensure default ones exist if not in roomCategories
         foreach (var def in new[] { "CLEANING", "MAINTENANCE", "SHOPPING" })
         {
             if (!counts.ContainsKey(def)) counts[def] = 0;
@@ -520,7 +511,7 @@
                 Count = item.Count,
                 Percentage = item.Floored + (idx < remainderSum ? 1 : 0)
             })
-            .Where(c => c.Count > 0) // Csak a ténylegesen előfordulókat mutatjuk a fánkdiagramon
+            .Where(c => c.Count > 0)
             .ToList();
 
         categoryShares = adjusted;
@@ -686,8 +677,8 @@
     }
 
     .kpi-label {
-        font-size: 0.68rem;
-        letter-spacing: 0.6px;
+        font-size: 0.65rem;
+        letter-spacing: 0.5px;
     }
 
     .extra-small {
@@ -702,8 +693,16 @@
         flex-shrink: 0;
     }
 
+    .chart-wrapper {
+        min-height: 200px;
+    }
+
+    .bar-column-height {
+        height: 165px;
+    }
+
     .stacked-bar-segment {
-        width: 38px;
+        width: 24px;
         border-top: 2px solid #ffffff;
         transition: height 0.3s ease, opacity 0.2s ease;
     }
@@ -724,7 +723,7 @@
         }
 
     .empty-bar-placeholder {
-        width: 38px;
+        width: 24px;
         height: 4px;
         background-color: #f1f5f9;
         border-radius: 2px;
@@ -732,8 +731,8 @@
 
     .donut-chart {
         position: relative;
-        width: 120px;
-        height: 120px;
+        width: 100px;
+        height: 100px;
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -741,9 +740,39 @@
     }
 
     .donut-hole {
-        width: 72px;
-        height: 72px;
+        width: 60px;
+        height: 60px;
         background-color: #ffffff;
         border-radius: 50%;
+    }
+
+    @@media (min-width: 576px) {
+        .kpi-label {
+            font-size: 0.68rem;
+            letter-spacing: 0.6px;
+        }
+
+        .chart-wrapper {
+            min-height: 270px;
+        }
+
+        .bar-column-height {
+            height: 220px;
+        }
+
+        .stacked-bar-segment,
+        .empty-bar-placeholder {
+            width: 38px;
+        }
+
+        .donut-chart {
+            width: 120px;
+            height: 120px;
+        }
+
+        .donut-hole {
+            width: 72px;
+            height: 72px;
+        }
     }
 </style>

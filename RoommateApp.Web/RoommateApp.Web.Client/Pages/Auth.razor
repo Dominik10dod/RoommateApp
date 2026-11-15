@@ -8,9 +8,9 @@
 @inject ApartmentStateService ApartmentState
 @inject NavigationManager Navigation
 
-<div class="auth-viewport bg-light px-4 px-md-5 py-3">
+<div class="auth-viewport bg-light px-3 px-sm-4 px-md-5 py-3">
     <!-- Top Brand Header -->
-    <div class="auth-container d-flex align-items-center gap-2 pt-2">
+    <div class="auth-container d-flex align-items-center gap-2 pt-1 pt-md-2">
         <div class="text-white rounded-3 d-inline-flex align-items-center justify-content-center shadow-sm"
              style="width: 38px; height: 38px; background-color: #6366f1;">
             <RadzenIcon Icon="done_all" Style="font-size: 1.25rem;" />
@@ -21,8 +21,8 @@
     <!-- Main Centered Hero & Auth Card -->
     <div class="auth-container my-auto">
         <div class="row align-items-center justify-content-between g-4 g-xl-5">
-            <!-- Left Side: Value Proposition -->
-            <div class="col-lg-6">
+            <!-- Left Side: Value Proposition (Hidden on mobile so login fits without scroll) -->
+            <div class="col-lg-6 d-none d-lg-block">
                 <h1 class="fw-bold text-dark mb-3" style="font-size: clamp(2rem, 3.1vw, 2.75rem); letter-spacing: -1px; line-height: 1.15;">
                     Keep your home clean, rewards high, and roommates happy.
                 </h1>
@@ -59,19 +59,19 @@
                 </div>
             </div>
 
-            <!-- Right Side: Larger & Inward Auth Card -->
-            <div class="col-lg-6 d-flex justify-content-center justify-content-lg-end">
-                <div class="card border-0 shadow rounded-4 p-4 p-xl-5 bg-white w-100" style="max-width: 520px;">
+            <!-- Right Side: Auth Card -->
+            <div class="col-12 col-lg-6 d-flex justify-content-center justify-content-lg-end">
+                <div class="card border-0 shadow-sm rounded-4 p-4 p-xl-5 bg-white w-100" style="max-width: 520px;">
 
                     <!-- Tab Selector -->
-                    <div class="bg-light p-1 rounded-pill d-flex mb-4">
+                    <div class="bg-light p-1 rounded-pill d-flex mb-3 mb-md-4">
                         <button type="button"
-                                class="btn btn-sm rounded-pill flex-fill fw-bold py-2 @(isSignIn ? "bg-white text-dark shadow-sm" : "text-secondary border-0")"
+                                class="@($"btn btn-sm rounded-pill flex-fill fw-bold py-2 {(isSignIn ? "bg-white text-dark shadow-sm" : "text-secondary border-0")}")"
                                 @onclick="() => SetTab(true)">
                             Sign In
                         </button>
                         <button type="button"
-                                class="btn btn-sm rounded-pill flex-fill fw-bold py-2 @(!isSignIn ? "bg-white text-dark shadow-sm" : "text-secondary border-0")"
+                                class="@($"btn btn-sm rounded-pill flex-fill fw-bold py-2 {(!isSignIn ? "bg-white text-dark shadow-sm" : "text-secondary border-0")}")"
                                 @onclick="() => SetTab(false)">
                             Sign Up
                         </button>
@@ -159,8 +159,8 @@
         </div>
     </div>
 
-    <!-- Bottom Spacer for Balanced Vertical Centering -->
-    <div style="height: 16px;"></div>
+    <!-- Bottom Spacer -->
+    <div style="height: 8px;"></div>
 </div>
 
 @code {
@@ -243,6 +243,7 @@
 <style>
     .auth-viewport {
         height: 100vh;
+        height: 100dvh;
         width: 100%;
         overflow: hidden;
         display: flex;
